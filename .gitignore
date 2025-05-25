@@ -1,0 +1,13 @@
+# gitignore patterns for myGarage
+
+*.ini
+*.txt
+*.log
+*.old*
+*.service
+*.stderr
+*.stdout
+gw_door_state
+test*.py
+
+

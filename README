@@ -1,0 +1,62 @@
+############################################
+#
+#	myGarage project v4.0
+#
+#	2025-02-26
+#
+############################################
+
+Monitor and control garage door
+
+uses gpiozero
+insure that RPi.GPIO module is installed in virtual environment
+uses web sockets
+
+2024-01-10 updated scope of octime to global
+           corrected determining last octime on startup gw_web.py
+
+2024-01-11 updated .gitignore
+
+2024-02-24 updated systemd service units
+
+2024-06-04 gw_log.py uses file gw_door_state file to send status
+	   updates to gw_web.py
+
+	   gw_web.py sends SIGUSR1 (10) to gw_log.py to activate
+	   door
+
+	   gw_web.py sends SIGUSR2 (12) to gw_log.py to indicate
+	   that Bad Pin was entered to gw_web.py
+
+2024-08-27 modified gw_log.py and gw_Functions.py to handle Exceptions.
+	   
+	   gw_log.py imports myclasses.py
+	   
+	   Uses myError Class object to capture exception type and
+	   description
+
+2024-08-28 stop using gw_door_state file to send status
+		   updates to gw_web.py
+
+		   gw_web sends signal 60 to gw_log to indicate gw_web
+		   has started
+
+		   gw_log sends signals to gw_web to indicate:
+		   60 - door open
+		   61 - door closed
+		   62 - door opening
+		   63 - door closing
+		   
+2024-09-04 Modified /Log route in gw_web.py to show one log day
+		   at a time	
+
+2024-10-10 fixed bug in gw_web.py to send door activation signal
+
+2024-10-13 gw_web.py updated to handle multiple clients
+           builds list of attached clients then sends door status
+           updates to all clients in list
+
+2025-02-14 updated gw_web.py to run in gunicorn web server
+			- gw_web.py uses gw_door_state to determine door state
+
+2025-02-26 updated gw_log.py error handling

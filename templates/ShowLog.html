@@ -1,0 +1,62 @@
+<html>
+<!-- <META HTTP-EQUIV="refresh" CONTENT="5"> -->
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/gwstyles.css') }}">	
+<link rel="stylesheet" type="text/css" href="/home/paul/myprojects/myGarage/static/css/gwstyles.css">
+
+<script>
+    function refresh(){
+        window.location = "/Log";
+    }
+    function SetFocus(fld){
+        const focusfld = document.getElementById(fld);
+        const length = focusfld.value.length;
+        focusfld.focus();
+        focusfld.setSelectionRange(length, length);
+        
+        // document.getElementById("logday").focus();
+    }
+
+</script>
+
+<style>
+    .logform{
+        font-size: 24px;
+
+    }
+</style>
+
+
+<body bgcolor="lightcyan" onload="SetFocus('logday')">
+<br >
+<br>
+<center>
+<p class="p2">Log File as of {{fmtdate}}
+<span class="p3"><br>(There are {{fmtnumdays}} days in log file)</span></p>
+<br>
+<form action="/Log" method="post" id="logform" class="logform">
+    <label for="logday">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
+    <input class="lday" id="logday" name="logday" type="text "pattern="?-[0-9]*" 
+    value="{{fmtlday}}" STYLE="background-color:white;", size="4" >
+</form>
+
+</center>
+<div class="logdata">
+
+<p>
+<pre>
+{{fmtdata}} 
+</pre>
+</p>
+
+</div>
+<center onclick="refresh()">
+<br><br>
+<!-- <button class="btn" onclick="refresh()">Refresh</button><br><br> -->
+<p class="b"">Click to refresh</p>
+<br><br>
+</center>
+
+<center>
+<a href="/" class="b">Return</a><br><br>
+</center>
+</body></html>

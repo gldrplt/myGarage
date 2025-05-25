@@ -1,0 +1,522 @@
+#################################################################################
+#	gw_log.py
+#
+#	version using gpiozero
+#
+#	Monitors garage door position
+#
+#     Updated to allow gw_web.py to run on gunicorn web server
+#     Writes to gw_door_state file to notify gw_web.py app about door status
+#
+#     Receives signals from gw_web.py app to activate door
+#
+#       GPIO Pin numbers refer to board connector NOT the Broadcom chip 
+#       GPIO Pins:       7 Activates Relay(open/close door)
+#                       13 Motion Detector Sensor
+#                       15 Motion Detected LED
+#                       16 Door Closed
+#                       18 Door Open
+#                       11 Door Closed LED
+#                       12 Door Open LED
+#
+#       Motion Detector wiring
+#               From Back, Left to Right
+#                       Red, Black,Green + Black to LED
+#                       Yellow to LED
+#               
+#       Main unit ==> motion detector
+#               Blue   ==> Orange
+#               Red    ==> Red
+#               Yellow ==> Brown
+#               Green  ==> Blue
+#
+#################################################################################
+
+import os
+import signal
+import time
+from datetime import datetime
+import gw_Functions as gwf
+from threading import Timer, Event, Thread
+from watchfiles import watch
+import multiprocessing
+from gpiozero import Button, LED, PWMLED
+from gw_Classes import myError, mySignals, gwColors
+
+def AbortTerm(signum, frame):
+      global endmsg
+      print("\rat AbortTerm")
+      endmsg = "User sent SIGABRT ..."
+      print(signum, signal.strsignal(signum))
+      stop_pgm_event.set()
+
+def SystemdTerm(signum, frame):
+#      breakpoint()
+      global endmsg
+      print("\rat SystemdTerm")
+      endmsg = "Systemd terminated program sent SIGTERM ..."
+      print(signum, signal.strsignal(signum))
+      stop_pgm_event.set()
+
+def UserTerm(signum, frame):
+      global endmsg
+      print("\rat UserTerm")
+      endmsg = "User pressed Ctrl-C ..."
+      print(signum, signal.strsignal(signum))
+      stop_pgm_event.set()
+
+def ErrorTerm():
+      stop_pgm_event.set()
+
+def MotionDetected():
+      motionevent.set()
+
+def blinkled():
+        try:
+            while True:
+                  while motionevent.is_set():
+                        motionled.blink(.1,.1)
+                        motiondetectedbtn.wait_for_press()
+                        motionled.off()
+                        motionevent.clear()
+                  motionevent.wait()
+
+        except Exception as error:
+              location = "at blinkled"
+              myerr = myError(error, location)
+              ErrorTerm()
+
+def setparms():
+         global gwLogFile
+         global gwLogDays
+         global gwOpenWarning
+         global gwCloseDoor
+         global gwOpenTime
+         global gwBootTime
+
+      #       Set Log File
+         gwLogFile = mypath + '/gwdefaultlog.log' #default log file
+         x=gwdict['gwLogFile']
+         if x != '' : gwLogFile = mypath + '/' + x   #log file from gw_parms.ini
+
+         #       Get Log File Days count
+         gwLogDays = int(gwdict['gwLogDays'])               
+
+         #       Set Open Warning Flag
+         gwOpenWarning = False
+         x = gwdict['gwOpenWarning']
+         if x == 'True' : gwOpenWarning = True
+
+         #       Set Close Door Flag
+         gwCloseDoor = False
+         x = gwdict['gwCloseDoor']
+         if x == 'True' : gwCloseDoor = True
+
+         #       Set Open Door Time Limit
+         gwOpenTime = 15                 #Default open time in minutes
+         x = gwdict['gwOpenTime']        
+         if x !='' : gwOpenTime = int(x) * 60 # convert to seconds
+
+         #       Set Re Boot Time
+         gwBootTime = '2359'             # Set what time to perform reboot
+         a = gwdict['gwBootTime']
+         if a != '':gwBootTime = a
+
+def watchparmfile(parmfile, gwdict, gwdictcomment, rebootproc):
+      # watch for changes to parmfile
+      global OldBootTime
+
+      try:
+            for changes in watch(parmfile):
+                  z = datetime.now()            # get time
+                  ts = gwf.fmtts(z)                 # format time stamp
+                  msg = "\t    " + ts + " -- gw_parms.ini file Changed ...\n"
+                  gwf.writelog(gwLogFile,msg)
+                  print(msg)
+                  gwf.build_gwdict(parmfile, gwdict, gwdictcomment) # rebuild dictionary
+                  setparms()                                        # set parms
+                  if gwBootTime != OldBootTime:                     # if boot time changed relaunch reboot subprocess
+                        OldBootTime = gwBootTime
+                        boot_dto = gwf.calc_reboot_dto(gwBootTime)  # calculate Reboot time and return dto object
+                        write_reboot_time_log(boot_dto,gwLogFile)             # write reboot time log msg
+                        rebootproc.terminate()                                # stop reboot thread
+                        rebootproc = multiprocessing.Process(target = gwf.waitforreboot, \
+                               args=(boot_dto, gwLogFile, gwColors), \
+                               daemon = True)
+                        rebootproc.start()                                    # restart reboot thread
+      except Exception as error:
+                  location = "at watchparmfile"
+                  myerr = myError(error, location)
+                  ErrorTerm()
+
+def WriteDoorState(doorstate):
+      f = open("gw_door_state", "w")
+      f.write(doorstate)
+      f.close()
+
+def DoorOpen():
+         global ini_mtime
+         global laststate
+         global doorstate
+                  
+         openled.on()
+         closedled.off()
+      
+         z = datetime.now()
+         ts = gwf.fmtts(z)                 # format time stamp
+         msg = "\t    " + ts + " -- Door is Open \n\n"
+         gwf.writelog(gwLogFile,msg)
+         print(msg)
+         gwf.writeoctime(z)   # write open/close time for gw_web
+         doorstate = "Open"
+
+         WriteDoorState(doorstate)
+
+         # Start Door Open Timer
+         try:
+            if gwOpenWarning or gwCloseDoor:
+                  timer.start()
+         except Exception as error:
+                  location = "at DoorOpen"
+                  myerr = myError(error, location)
+                  ErrorTerm()
+
+def DoorOpening():
+      global laststate
+      global doorstate
+
+      openled.blink(.1,.1)
+      closedled.blink(.1,.1)
+
+      z = datetime.now()
+      ts = gwf.fmtts(z)                 # format time stamp
+      msg = "\t    " + ts + " -- Door is Opening \n"
+
+      gwf.writelog(gwLogFile,msg)
+      print(msg)
+      doorstate = "Opening"
+
+      WriteDoorState(doorstate)
+
+def DoorClosed():
+         global ini_mtime
+         global laststate
+         global doorstate
+         
+         closedled.on() 
+         openled.off()
+
+         z = datetime.now()
+         ts = gwf.fmtts(z)                 # format time stamp
+         msg = "\t    " + ts + " -- Door is Closed \n\n"
+         gwf.writelog(gwLogFile,msg)
+         print(msg)
+         gwf.writeoctime(z)   # write open/close time for gw_web
+         doorstate = "Closed"
+
+         WriteDoorState(doorstate)
+
+def DoorClosing():
+      global laststate
+      global doorstate
+
+      openled.blink(.1,.1)
+      closedled.blink(.1,.1)
+
+      z = datetime.now()            # get time
+      ts = gwf.fmtts(z)                 # format time stamp
+      msg = "\t    " + ts + " -- Door is Closing \n"
+      gwf.writelog(gwLogFile,msg)
+      print(msg)
+      doorstate = "Closing"
+
+      WriteDoorState(doorstate)            
+
+def OpenWarning():   # Door has been open longer than gwOpenTime
+      
+      if gwOpenWarning: # Log open warning msg
+            z = datetime.now()
+            ts = gwf.fmtts(z)                 # format time stamp
+            m1 = "\t    " + ts + " -- Garage Door has been open for "
+            m2 = gwdict['gwOpenTime'] + " minutes\n"
+            msg =  m1 + m2
+            gwf.writelog(gwLogFile,msg)
+            print(msg)
+
+      if gwdict['smsMsg'] == 'True':   # Send SMS message
+            msg = '-\nmyGarage Application\n\nYour garage door has been open for more than:\n'
+            msg = msg + gwdict['gwOpenTime'] + ' minutes\n\n'
+            if gwCloseDoor:   # add closing door msg to SMS msg
+                  msg = msg + 'myGarage is closing door\n\n'     
+                  urlmsg = ''
+                  if gwdict['sms_url1'] != '' :
+                     urlmsg = urlmsg + "Local URL : " + gwdict['sms_url1'] +'\n\n\n'
+                  if gwdict['sms_url2'] != '' :
+                     urlmsg = urlmsg + "Remote URL : " + gwdict['sms_url2'] + '\n'
+                  msg = msg + urlmsg
+            
+            gwf.send_sms(gwdict, msg)  # send SMS message
+
+      if gwCloseDoor:    # close door
+         z = datetime.now()
+         ts = gwf.fmtts(z)                 # format time stamp
+         msg = "\t    " + ts + " -- Garage Door is closing... \n"
+         gwf.writelog(gwLogFile,msg)
+         print(msg)
+
+         pressdoorbtn.off()
+         time.sleep(1)
+         pressdoorbtn.on()
+
+def WebGoodPin(signum, frame):     # gw_web.py issued activate door command
+         z = datetime.now()         
+         ts = gwf.fmtts(z)                 # format time stamp
+         if doorstate == "Open":
+               msg = "\t    " + ts + " -- Garage Door Closed by gw_web.py app... \n"
+         else:
+               msg = "\t    " + ts + " -- Garage Door Opened by gw_web app.py... \n"
+      
+         gwf.writelog(gwLogFile,msg)
+         print(msg)
+
+         pressdoorbtn.off()         # press remote
+         time.sleep(1)
+         pressdoorbtn.on()
+
+def WebBadPin(signum, frame):       # gw_web.py received bad PIN
+         z = datetime.now()         
+         ts = gwf.fmtts(z)                 # format time stamp
+         msg = "\t    " + ts + " -- Bad Pin entered to gw_web app... \n"
+         gwf.writelog(gwLogFile,msg)
+         print(msg)
+
+def write_reboot_time_log(boot_dto,fname):
+      curtime = datetime.now()
+      ts = gwf.fmtts(curtime)
+      #        msg = curtime.strftime("\t    %H:%M:%S    -- Reboot time set to ... ")
+      msg = "\t    " + ts + " -- Reboot time set to ... "
+      t = datetime.strftime(boot_dto,'%Y %b %d %H:%M:%S')
+      msg = msg + t + "\n"
+      gwf.writelog(fname, msg, gwColors.byellow)
+      print(msg)
+
+def gw_web_started(signum, frame):  # gw_web.py has started - get PID
+      global gw_web_pid
+     
+      pids = []
+      tgt = "gw_web"
+      pids, vscode = gwf.get_tgt_pids(tgt)
+      
+      print("gw_web.py started ...")
+      print("gw_web.py PIDs =",pids)
+      
+      # send doorstate to each gw_web.py
+      # try:
+      #       for tgt in pids:
+      #             if opensw.is_pressed:         # Door Open
+      #                   print("sending Door Open")
+      #                   gwf.sendsignal(tgt, mysignals.Open)
+      #             elif closedsw.is_pressed:     # Door Closed
+      #                   print("sending Door Closed")
+      #                   gwf.sendsignal(tgt, mysignals.Closed)
+      #             else:                         # Door unknown - send opening
+      #                   print("sending Door Opening")
+      #                   gwf.sendsignal(tgt, mysignals.Opening)
+      # except:
+      #       pass
+      return       
+
+########################################################################
+# 
+#  Start of Program
+#       
+########################################################################
+
+#     initialize count of gw_web workers
+gw_web_cnt = 0
+
+#     get signals constants
+mysignals = mySignals()
+gw_web_pid = ""
+
+#     get color constants
+gwColors = gwColors()
+
+#     make paths relative to program directory
+mypath = gwf.get_path()
+parmfile = mypath + '/gw_parms.ini'
+z = os.stat(parmfile)           # get statistics on ini file
+ini_mtime = z.st_mtime          # save last modified time
+print('mypath = '+mypath)
+print ('\nWorking Directory = '+os.getcwd())
+os.chdir(mypath)
+print ('Changed to ..')
+print ('Working Directory = '+os.getcwd())
+envpath = os.environ['PATH']
+msg = '\n$PATH = ' + envpath
+print(msg)
+
+pid = os.getpid()
+print('\ngw_log.py PID = ',pid,'\n')
+
+#        Build Dictionary of parameters and comments
+gwdict = {}             # paramater values dictionary
+gwdictcomment = {}      # paramater comment dictionary
+gwf.build_gwdict(parmfile, gwdict, gwdictcomment)
+
+#       Set parameters from gwdict{}
+setparms()  
+
+#        Send program starting to logfile
+z = datetime.now()
+ts = gwf.fmtts(z)                 # format time stamp
+msg = z.strftime("%Y %b %d ") + ts + " -- Garage Web Log Program Started ----\n"
+gwf.writelog(gwLogFile, msg, gwColors.bwhite)
+print(msg)
+
+#     create stop_pgm_event
+stop_pgm_event=Event()
+stop_pgm_event.clear()
+
+#       Initialize re-boot process
+boot_dto = gwf.calc_reboot_dto(gwBootTime)  # calculate Reboot time and return dto object
+write_reboot_time_log(boot_dto,gwLogFile)                       # write reboot time log msg
+OldBootTime = gwBootTime
+
+#     start reboot subprocess
+#     use subprocess because of need to cancel subprocess on change of ini file
+rebootproc = multiprocessing.Process(target = gwf.waitforreboot, \
+                   args=(boot_dto, gwLogFile, gwColors), \
+                   daemon = True)
+rebootproc.start()
+
+#       Initialize watch parmfile thread
+watchthread = Thread(target = watchparmfile, args =\
+                     (parmfile, gwdict, gwdictcomment, rebootproc))
+watchthread.daemon = True
+watchthread.start()
+
+#       Initialize blinkled thread
+motionevent = Event()
+blinkledthread = Thread(target = blinkled)
+blinkledthread.daemon = True
+blinkledthread.start()
+
+#       Check # of days to keep in Log File
+#       Trim Log File if necessary
+gwf.trimlog(gwLogDays,gwLogFile)
+
+#     initialize relay to close door
+pressdoorbtn = LED('BOARD7', active_high=True, initial_value=True)
+
+#     initialize motion detected switch
+motiondetectedbtn = Button('BOARD13')
+motiondetectedbtn.when_released = MotionDetected
+
+#     initialize motion led
+brightness = float(gwdict['pwm_duty'])
+motionled = PWMLED('BOARD15', active_high=True, initial_value=brightness)
+motionled.off()
+
+#     Initialize open and closed switches(buttons)
+opensw = Button('BOARD18', pull_up=True, active_state=None, bounce_time=.5, hold_time=.25)
+opensw.when_pressed = DoorOpen
+opensw.when_released = DoorClosing
+openled = LED('BOARD12')
+
+closedsw = Button('BOARD16', pull_up=True, active_state=None, bounce_time=.5, hold_time=.25)
+closedsw.when_pressed = DoorClosed
+closedsw.when_released = DoorOpening
+closedled = LED('BOARD11')
+
+#        Initialize door open timer
+if gwOpenWarning or gwCloseDoor:
+      timer = Timer(gwOpenTime, OpenWarning)
+      
+#        Determine initial status of door
+
+doorstate = 'Unknown'
+laststate = ''
+if closedsw.is_pressed:
+      doorstate = 'Closed' 
+      laststate = 'Door is Closed'
+      closedled.on()
+
+if opensw.is_pressed: 
+      doorstate = 'Open'
+      laststate = 'Door is Open'
+      openled.on()
+
+if laststate == '': 
+      laststate = 'Door State is Unknown'
+      closedled.blink(.1,.1)
+      openled.blink(.1,.1)
+
+# Write doorstate
+WriteDoorState(doorstate)
+
+z = datetime.now()
+# msg = z.strftime("\t    %H:%M:%S.%f -- " + laststate + '\n')
+ts = gwf.fmtts(z)                 # format time stamp
+msg = "\t    " + ts + " -- " + laststate + "\n\n"
+gwf.writelog(gwLogFile,msg)
+print(msg)
+
+#     Set signal handler for SIGTINT
+#     User pressed Ctrl-C
+signal.signal(signal.SIGINT, UserTerm)
+
+#     Set signal handler for SIGTERM
+#     signal sent by systemd to terminate
+signal.signal(signal.SIGTERM, SystemdTerm)
+
+#     set signal handler for SIGUSR1 (10)
+#     gw_web app wants to close door
+signal.signal(signal.SIGUSR1, WebGoodPin)
+
+#     set signal handler for SIGUSR2 (12)
+#     gw_web app was sent Bad PIN code
+signal.signal(signal.SIGUSR2, WebBadPin)
+
+#     set signal handler for SIGABRT (6)  
+#     signal for testing purposes
+signal.signal(signal.SIGABRT, AbortTerm)
+
+#     set signal handler for signal (60)  
+#     signal for gw_web.py has started
+signal.signal(60, gw_web_started)
+
+#        Blocking Wait for event
+try:
+      print("gw_log.py waiting for change in door status :\n")
+      stop_pgm_event.wait()
+except Exception as error:
+      location = "Main Program (gw_log.py)at Blocking Wait ..."
+      myerr = myError(error, location)
+      ErrorTerm()
+
+#     Exit program
+
+z = datetime.now()
+ts = gwf.fmtts(z)                 # format time stamp
+msg = ""
+try:
+      if myerr:         # if error occurred
+            msg = "\n\t    " + ts + " -- " + myerr.errname + \
+                  " at " + myerr.location + " " + myerr.errtype + "\n"
+except:
+      pass
+
+msg = "\n\t    " + ts + " -- " + endmsg + "\n" + \
+      msg + \
+      "\n\t    " + ts + " -- Garage Web Log Program Shutdown ---\n\n"
+gwf.writelog(gwLogFile,msg, gwColors.byellow)
+print('\r'+msg)
+
+rebootproc.terminate()            # cancel reboot proc subprocess
+
+#########################################################
+#
+#        End of gw_log.py
+#
+#########################################################

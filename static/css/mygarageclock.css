@@ -1,0 +1,24 @@
+body {
+    cursor:default;
+    font-family:Arial;
+    font-size:24pt;
+    color:blue;
+    background-color:white;
+    /* text-decoration: none; */
+}
+.a{
+    font-size: 24pt;
+    text-decoration: none;
+}
+.a:link    {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
+.a:visited {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
+.a:hover   {font-family:Arial; font-size:24px; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
+
+p.large{
+    font-size: 32px;
+    font-weight: bold;
+    color:blue;
+}
+p.small{
+font-size: 14pt;
+}

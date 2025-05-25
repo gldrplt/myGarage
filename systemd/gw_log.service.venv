@@ -1,0 +1,31 @@
+[Unit]
+Description=myGarage Log Service - venv
+After=multi-user.target
+
+[Service]
+Type=simple
+# Set user to find locally installed python modules
+User=paul
+
+KillSignal=SIGTERM
+
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_log.stdout.log \
+			     /home/paul/myprojects/myGarage/gw_log.stdout.old
+
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_log.stderr.log \
+			     /home/paul/myprojects/myGarage/gw_log.stderr.old
+
+Environment=PATH=/home/paul/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# ExecStart for non virtual env
+#ExecStart=/usr/bin/python3 -u /home/paul/myprojects/myGarage/gw_log.py
+
+# ExecStart for virtual env
+ExecStart=/home/paul/.virtualenvs/myGarage/bin/python -u\
+          /home/paul/myprojects/myGarage/gw_log.py
+
+StandardOutput=truncate:/home/paul/myprojects/myGarage/gw_log.stdout.log
+StandardError=truncate:/home/paul/myprojects/myGarage/gw_log.stderr.log
+
+[Install]
+WantedBy=multi-user.target

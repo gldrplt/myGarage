@@ -1,0 +1,102 @@
+body { 
+cursor:default;
+margin-left: 0px;
+margin-right: 0px;
+margin-top: 0px;
+margin-bottom: 0px;
+font-family:Arial, Trebuchet MS, Verdana, Helvetica, sans-serif;
+font-size:24px;
+font-weight:normal;
+
+}
+
+input {
+	font-size:24px;
+}
+
+.button {
+  background-color: grey;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 24px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+
+.a:link    {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
+.a:visited {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
+.a:hover   {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none; cursor:hand}
+.a:active  {font-family:Arial; font-size:24px; font-weight:bold; color:#000000; text-decoration: none; cursor:text}
+.a {
+	color:blue;
+  text-decoration:none;
+  background-color: transparent;
+  font-weight: bold;
+  border-style: none;
+}
+
+.b:link    {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
+.b:visited {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
+.b:hover   {font-family:Arial; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
+.b:active  {font-family:Arial; font-weight:bold; color:#000000; text-decoration: none; cursor:text}
+.b {
+  font-size: 24px;
+	color:#f30909;
+	text-decoration:none;
+}
+
+.lday:link    {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
+.lday:visited {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
+.lday:hover   {font-family:Arial; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
+.lday:active  {font-family:Arial; font-weight:bold; color:#000000; text-decoration: none; cursor:text}
+.lday {
+  
+  font-weight: bold;
+	color:blue;
+	text-decoration:none;
+}
+
+.link:link    {font-family:Arial; font-size:24px; font-weight:bold; color:white; text-decoration: none}
+.link:visited {font-family:Arial; font-size:24px; font-weight:bold; color:white; text-decoration: none}
+.link:hover   {font-family:Arial; font-size:24px; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
+.link:active  {font-family:Arial; font-size:24px; font-weight:bold; color:white; text-decoration: none; cursor:text}
+.link {
+	color:white;
+  text-decoration:none;
+  background-color: transparent;
+  font-weight: bold;
+  border-style: none;
+}
+
+
+p {
+text-align:center;
+color:white;
+font-weight:bold;
+}
+.p2{
+  font-size:32px;
+  color:black;
+
+}
+.p3{
+  font-size:24px;;
+  color:black;
+  font-weight:normal;
+
+
+
+
+}
+.logdata {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 28px;
+	margin-left:100px;
+  width: 80%;
+  height: 60%;
+  overflow:scroll;
+}
+

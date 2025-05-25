@@ -1,0 +1,31 @@
+[Unit]
+Description=myGarage Web Service
+Requires=gw_log.service
+After=gw_log.service
+DefaultDependencies=no
+
+[Service]
+Type=simple
+User=paul
+Restart=always
+RestartSec=1
+RemainAfterExit=yes
+
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stdout \
+			  /home/pi/myprojects/myGarage/gw_web.stdout.old
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stderr \
+			  /home/pi/myprojects/myGarage/gw_web.stderr.old
+
+# ExecStart for non virtual env
+#ExecStart=/usr/bin/python3 -u /home/paul/myprojects/myGarage/gw_web.py
+
+# ExecStart for virtual env
+WorkingDirectory=/home/paul/myprojects/myGarage
+ExecStart=/home/paul/.virtualenvs/myGarage/bin/python -u\
+	 /home/paul/myprojects/myGarage/gw_web.py
+
+StandardOutput=truncate:/home/paul/myprojects/myGarage/gw_web.stdout
+StandardError=truncate:/home/paul/myprojects/myGarage/gw_web.stderr
+
+[Install]
+WantedBy=multi-user.target

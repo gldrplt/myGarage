@@ -1,0 +1,97 @@
+<html><head>
+
+ <style>
+    h1{text-align: center;font-size: 70px;font-family:Arial, Helvetica, sans-serif;}
+    div{font-size: 20px;font-family:Arial, Helvetica, sans-serif;white-space: pre-wrap;}
+	body{background-color:linen;font-size: 20px;}
+	body.form{text-align: left;}
+
+
+	form{
+		margin: auto;
+		width: 1200px;
+		padding: 1em;
+		border: 1px solid #CCC;
+		border-radius: 1em;
+}
+	ul{
+		list-style: none;
+		padding: 0em;
+		margin-left: 0px;
+}
+
+	form li {
+		margin-left: 20px;
+		margin-top: 0em;
+		font-size: 50px;
+}
+
+	label{
+		display: inline-block;
+		width: 400px;
+		text-align: left;
+}
+
+	input{
+		font: 1em sans-serif;
+		width: 700px;
+		box-sizing: border-box;
+		border: 1px solid #999;
+		white-space: pre;
+}
+	input.short{
+		width: 200px;
+}	
+	input:focus{
+		border-color: #000;
+}
+
+	.button{
+		padding-left: 1px;
+}
+
+	button{
+		margin-left: 0em;
+		font-size: 50px;
+		text-align: left;
+}
+
+	p{
+		text-align: right;
+}
+
+ </style>
+    
+</head>
+    
+    <body class="form"><br>
+        <h1>Garage App Parameters v2.0</h1>
+        <div><form action="/procform" method="post"><ul>
+			<datalist id="truefalse">
+			  <option value="True">
+			  <option value="False">
+			</datalist>
+			<li><label for "r1">Garage Name    :</label> <input type="text" id="r1" name="frm_gname" value="{{p_gname}}"</input></li>
+			<li><label for "r2">Activation Code  :</label> <input class="short" type="text" id="r2" name="frm_code" value="{{p_code}}"></input></li>
+			<li><label for "r3">Open warning ? : </label> <input class="short" type="text" id="r3" name="frm_warn" value={{p_openwarn}} list="truefalse" pattern="True|False">  True/False</li>
+			<li><label for "r4">Close Door ?      : </label> <input class="short" type="text" id="r4" name="frm_close" value={{p_closedoor}} list="truefalse" pattern="True|False">  True/False</li>
+			<li><label for "r5">Open Time         : </label> <input class="short" type="number" id="r5" name="frm_opentime" value={{p_opentime}}>  in Minutes</li>
+			<li><label for "t1">ReBoot Time     : </label> <input class="short"
+				type="text" min="0" max="2400" id="t1" name="frm_boottime" value={{p_boottime}}
+				pattern="[0-2][0-9][0-5][0-9]" required >  hhmm (24hr)</li>
+			<li><label for "t2">Log Days          : </label> <input class="short" type="number" id="t2" name="frm_logdays" value={{p_logdays}}></li>
+			<li><label for "t7">LED Brightness : </label> <input class="short" 
+				type="number" step=".01" min="0" max="1" pattern="^\d*\.?\d+" 
+				id="t7" name="frm_led" value={{p_led}}>  0.00 - 1.00</li>
+			<li><label for "r6">Send SMS ?      : </label> <input class="short" type="text" id="r6" name="frm_sendsms" value={{p_sendsms}} list="truefalse" pattern="True|False">  True/False</li>
+			<li><label for "t3">Phone 1             : </label> <input type="text" id="t3" name="frm_phone1" value={{p_phone1}}></li>
+			<li><label for "t4">Phone 2             : </label> <input type="text" id="t4" name="frm_phone2" value={{p_phone2}}></li>
+			<li><label for "t5">Local URL          : </label> <input type="text" id="t5" name="frm_url1" value={{p_url1}}></li>
+			<li><label for "t6">Remote URL      : </label> <input type="text" id="t6" name="frm_url2" value={{p_url2}}></li>
+			</ul>
+		<p class="button"> <button type="submit" formaction="/">    Cancel    </button>   <button type="submit" formaction="/ProcParmForm">Update Parms</button></p>	
+        </form>
+		</div>
+
+    </body>
+</html>
