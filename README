@@ -2,15 +2,17 @@
 #
 #	myGarage project v4.0
 #
-#	2025-02-26
+#	2025-05-26
 #
 ############################################
 
 Monitor and control garage door
 
-uses gpiozero
-insure that RPi.GPIO module is installed in virtual environment
-uses web sockets
+- uses gpiozero instead of RPi.GPIO
+
+- insure that RPi.GPIO module is installed in virtual environment
+
+- uses web sockets in gw_web.py
 
 2024-01-10 updated scope of octime to global
            corrected determining last octime on startup gw_web.py
