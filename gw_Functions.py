@@ -37,34 +37,14 @@ def get_path():             # get directory where program started from
 
     return rpath
 
-def get_parm(fname,fparm):
-    try:
-        parmvalue = ''
-        f=open(fname)
-        z=f.read()
-        f.close()
-        
-        x  = z.split('\n')
-        
-        for y in x:
-            a = y.split('=')
-            if a[0] == fparm:
-                parmvalue = a[1]
-                break
-    
-        return parmvalue
-
-    except:
-        print('Something went wrong')
-
 def build_gwdict(fname, gwdict, gwdictcomment):
     
     gwdict.clear()
     gwdictcomment.clear()
 
-    f = open(fname)
-    z = f.read()
-    f.close()
+    with open(fname, "r") as f:
+        z = f.read()
+    
     x = z.split('\n')       #break into individual lines
     for a in x:
         b = a.split('#')    #check if comment only line
@@ -181,9 +161,9 @@ def waitforreboot(reboot_dto,fname,gwColors):     # threaded callback function t
     
 def trimlog(logdays,logfile):
     try:
-        f = open(logfile,'r')
-        z = f.read()        # get current log file data
-        f.close()
+        with open(logfile,'r') as f:
+            z = f.read()        # get current log file data
+        
         a = z.split('Started')
         i = len(a)
         if i <= logdays:     # check if log file exceeds gwLogDays
@@ -268,14 +248,14 @@ def sendsignal(tgt, signal):    # send signal to tgt pids
 def getlogdays(logfile):
     #   returns array of logfile days
     logdays = []
-    try:
-        
-        f = open(logfile,'r')
+    i = 0
+
+    with open(logfile,'r') as f:
         z = f.read()        # get current log file data
-        f.close()
         a = z.split('Started')
         i = len(a)
-    except:
+
+    if i <= 1:
         return logdays
 
     fp = ''                         # fp = first part of day

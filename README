@@ -1,6 +1,6 @@
 ############################################
 #
-#	myGarage project v4.0
+#	myGarage project v5.0
 #
 #	2025-05-26
 #
@@ -12,7 +12,10 @@ Monitor and control garage door
 
 - insure that RPi.GPIO module is installed in virtual environment
 
-- uses web sockets in gw_web.py
+- uses web sockets in gw_web.py to dynamically show door state
+
+- gw_log.py uses TCP/IP sockets to notify gw_web.py of change
+  in door state
 
 2024-01-10 updated scope of octime to global
            corrected determining last octime on startup gw_web.py

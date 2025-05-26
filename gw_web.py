@@ -24,6 +24,7 @@ from watchfiles import watch
 from gw_Classes import mySignals
 from watchfiles import watch
 import re
+import socket
 
 def DoorClosed():
      global color, doorstate
@@ -82,18 +83,18 @@ def Send_Door_Change():
 
 def shutdown():                 # shutdown raspberry pi
     print("at shutdown")
-    os.system("/home/pi/bin/myclock -k")
+    os.system(homedir + "/bin/myclock -k")
     os.system("sudo shutdown now")
 
 def reboot():                   # reboot raspberry pi
     print("at reboot")
-    os.system("/home/pi/bin/myclock -k")
+    os.system(homedir + "/bin/myclock -k")
     os.system("sudo shutdown -r now")
 
 def close():                    # shutdown gw_web.py program
     print("\n... Closing webserver ...\n") 
-    os.system("/home/pi/bin/myclock -k")
-    os.system("/home/pi/bin/killpids gw_web.py")
+    os.system(homedir + "/bin/myclock -k")
+    os.system(homedir + "/bin/killpids gw_web.py")
 
 def chkprog(pname):
      for proc in psutil.process_iter( [ 'cmdline' ]):
@@ -102,27 +103,37 @@ def chkprog(pname):
                     return True
      return False
 
-def watch_gw_door_state_file():
-     global doorstate
-     try:
-          for changes in watch('gw_door_state'):
-               f = open('gw_door_state', 'r')
-               doorstate = f.read()
-               if doorstate == "Closed":
-                    DoorClosed()
-               elif doorstate == "Closing":
-                    DoorClosing()
-               elif doorstate == "Open":
-                    DoorOpen()
-               elif doorstate == "Opening":
-                    DoorOpening()
-               else:
-                    print('Door state unknown') 
+def listen_to_gw_log():
+    global doorstate
 
-     except:
-          pass
-     pass
-########################################################
+    # use TCP/IP Sockets to be notified of change in door status
+    HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+    PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT)) 
+        s.listen()
+        while True:
+            conn, addr = s.accept()
+            with conn:
+                print('Connected by', addr)
+                while True:
+                    x = conn.recv(1024)
+                    if not x:
+                        break
+                    doorstate = x.decode()
+                    print('Door State Changed to: ' + doorstate)
+                    if doorstate == "Closed":
+                        DoorClosed()
+                    elif doorstate == "Closing":
+                        DoorClosing()
+                    elif doorstate == "Open":
+                        DoorOpen()
+                    elif doorstate == "Opening":
+                        DoorOpening()
+                    else:
+                        print('Door state unknown') 
+    print('gw_web ending ...\n')
+######################################################
 #
 #   Program Start
 #
@@ -173,7 +184,6 @@ now = datetime.now()
 msg = now.strftime("\n%H:%M:%S gw_web.py starting ...\n")
 print(msg)
 
-# mypath = gwf.get_path()
 mypath = os.getcwd()
 parmfile = mypath + '/' + 'gw_parms.ini'
 
@@ -189,6 +199,10 @@ print('\ngw_web.py PID = ',pid,'\n')
 hostname = os.uname().nodename
 print('Hostname = ',hostname, '\n')
 
+#   get home directory
+homedir = os.getenv("HOME")
+print('Home Directory = ',homedir,'\n')
+      
 #   Create Flask and WebSocket instances
 app = Flask(__name__)   # Flask instance
 app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
@@ -217,23 +231,21 @@ milflag = False         # initialize milflag
 dateflag = False        # initialize datefla
 
 #   Determine door status
-f = open('gw_door_state', 'r')
-doorstate = f.read()
-print("Garage Door State is ",doorstate)
+with open('gw_door_state', 'r') as f:
+    doorstate = f.read()
+    print("Garage Door State is ",doorstate)
 
 #   Get last open/close time
 octime = datetime(9999,1,1,0,0,0,0)   # default dto
-try:
-    f = open('gw_octime.txt')
-    x = f.read()
-    x = x.rstrip()    # remove new line
-    octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
-except:
-    pass
+with open('gw_octime.txt', "r") as f:
+     x = f.read()
+     x = x.rstrip()    # remove new line
+     octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
 
-watchthread = Thread(target = watch_gw_door_state_file)
-watchthread.daemon = True
-watchthread.start()
+#   use TCP/IP sockets to listen to gw_log.py
+listenthread = Thread(target = listen_to_gw_log)
+listenthread.daemon = True
+listenthread.start()
 
 ####################################################
 #
@@ -368,13 +380,13 @@ def MyClock():
 @app.route('/Show')
 def Show():
     print("at Show\n")
-    os.system("/home/pi/bin/myclock +s")
+    os.system(homedir + "/bin/myclock +s")
     return redirect('/MyClock')
 
 @app.route('/Blank')
 def Blank():
     print("at Blank\n")
-    os.system("/home/pi/bin/myclock -s")
+    os.system(homedir + "/bin/myclock -s")
     return redirect('/MyClock')
     
 @app.route('/ToggleMil')
@@ -387,7 +399,7 @@ def ToggleMil():
     else:
         milflag = True
         p = "+m"
-    cmd = "/home/pi/bin/myclock "+p
+    cmd = homedir + "/bin/myclock "+p
     print(cmd)
     os.system(cmd)
     return redirect('/MyClock')
@@ -402,7 +414,7 @@ def ToggleDate():
     else:
         dateflag = True
         p = "+d"
-    cmd = "/home/pi/bin/myclock "+p
+    cmd = homedir + "/bin/myclock "+p
     print(cmd)    
     os.system(cmd)
     return redirect('/MyClock')
@@ -410,37 +422,37 @@ def ToggleDate():
 @app.route('/Mil')
 def Mil():
     print("at MIL\n")
-    os.system("/home/pi/bin/myclock +m")
+    os.system(homedir + "/bin/myclock +m")
     return redirect('/MyClock')
 
 @app.route('/notMIL')
 def notMIL():
     print("at notMIL\n")
-    os.system("/home/pi/bin/myclock -m")
+    os.system(homedir + "/bin/myclock -m")
     return redirect('/MyClock')
 
 @app.route('/Dim')
 def Dim():
     print("at Dim\n")
-    os.system("/home/pi/bin/myclock -b 0")
+    os.system(homedir + "/bin/myclock -b 0")
     return redirect('/MyClock')
 
 @app.route('/Bright')
 def Bright():
     print("at Bright\n")
-    os.system("/home/pi/bin/myclock -b 1")
+    os.system(homedir + "/bin/myclock -b 1")
     return redirect('/MyClock')
 
 @app.route('/Segments')
 def Segments():
     print("at Segments\n")
-    os.system("/home/pi/bin/myclock -f")
+    os.system(homedir + "/bin/myclock -f")
     return redirect('/MyClock')
 
 @app.route('/RestartClock')
 def RestartClock():
     print("at RestartClock\n")
-    os.system("/home/pi/bin/restartclock")
+    os.system(homedir + "/bin/restartclock")
     return redirect('/MyClock')
         
 @app.route('/Admin')
@@ -532,9 +544,8 @@ def ProcParmForm():
 
 @app.route('/Parms')
 def Parms():
-        f = open(parmfile,'r')
-        pdata = f.read()
-        f.close()
+        with open(parmfile, 'r') as f:
+            pdata = f.read()
         return render_template('parms.html', parmdata=pdata)
 
 @app.route('/TestSMS')
@@ -559,6 +570,9 @@ def test_sms():
 #   flush stdout, stderr buffers
 sys.stdout.flush()
 sys.stderr.flush()
+now = datetime.now()
+msg = now.strftime("\n%H:%M:%S gw_web.py at Launch Flask ...\n")
+print(msg)
 
 if __name__ == '__main__':
         app.run(debug=False, host='0.0.0.0', port=int(gwdict['gwPort']))

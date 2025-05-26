@@ -42,6 +42,7 @@ from watchfiles import watch
 import multiprocessing
 from gpiozero import Button, LED, PWMLED
 from gw_Classes import myError, mySignals, gwColors
+import socket
 
 def AbortTerm(signum, frame):
       global endmsg
@@ -153,6 +154,12 @@ def WriteDoorState(doorstate):
       f = open("gw_door_state", "w")
       f.write(doorstate)
       f.close()
+      if gw_web_pid != "":
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                  s.connect((gwhost, gwlogport))
+                  s.sendall(doorstate.encode())
+                  print('Sent Doorstate = ' + doorstate + '/n')
+      
 
 def DoorOpen():
          global ini_mtime
@@ -306,7 +313,7 @@ def gw_web_started(signum, frame):  # gw_web.py has started - get PID
       pids = []
       tgt = "gw_web"
       pids, vscode = gwf.get_tgt_pids(tgt)
-      
+      gw_web_pid = pids
       print("gw_web.py started ...")
       print("gw_web.py PIDs =",pids)
       
@@ -341,6 +348,10 @@ gw_web_pid = ""
 
 #     get color constants
 gwColors = gwColors()
+
+#     TCP/IP Socket parms
+gwhost = '127.0.0.1'
+gwlogport = 65432
 
 #     make paths relative to program directory
 mypath = gwf.get_path()
