@@ -1,11 +1,14 @@
 ############################################################################
 #       gw_web.py
 #
-#       ver 3.0
+#       ver 5.0
 #
 #       No longer using gpiozero or RPi.GPIO
 #
 #       Monitors gw_door_state file to update door status
+#
+#       Use Unix Socket to listen to gw_log.py to 
+#       indicate change in door state
 #
 #       Send SIGUSR1 signal to gw_log.py to activate door
 #       Send SIGUSR2 signal to gw_web.py if Bad Pin
@@ -20,9 +23,7 @@ import gw_Functions as gwf
 import psutil
 from threading import Event
 from threading import Thread
-from watchfiles import watch
 from gw_Classes import mySignals
-from watchfiles import watch
 import re
 import socket
 
@@ -106,16 +107,20 @@ def chkprog(pname):
 def listen_to_gw_log():
     global doorstate
 
-    # use TCP/IP Sockets to be notified of change in door status
+    # use UNIX Sockets to be notified of change in door status
     HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
     PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, PORT)) 
+    sockpath = "/tmp/gw_socket"
+    if os.path.exists(sockpath):
+        os.remove(sockpath)
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.bind(sockpath) 
         s.listen()
         while True:
             conn, addr = s.accept()
             with conn:
-                print('Connected by', addr)
+                print('Socket created at' + sockpath + '\n' )
                 while True:
                     x = conn.recv(1024)
                     if not x:
@@ -242,7 +247,7 @@ with open('gw_octime.txt', "r") as f:
      x = x.rstrip()    # remove new line
      octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
 
-#   use TCP/IP sockets to listen to gw_log.py
+#   use UNIX sockets to listen to gw_log.py
 listenthread = Thread(target = listen_to_gw_log)
 listenthread.daemon = True
 listenthread.start()

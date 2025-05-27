@@ -1,8 +1,8 @@
 ############################################
 #
-#	myGarage project v5.0
+#	myGarage project v5.1
 #
-#	2025-05-26
+#	2025-05-27
 #
 ############################################
 
@@ -14,7 +14,7 @@ Monitor and control garage door
 
 - uses web sockets in gw_web.py to dynamically show door state
 
-- gw_log.py uses TCP/IP sockets to notify gw_web.py of change
+- gw_log.py uses UNIX sockets to notify gw_web.py of change
   in door state
 
 2024-01-10 updated scope of octime to global
@@ -65,3 +65,7 @@ Monitor and control garage door
 			- gw_web.py uses gw_door_state to determine door state
 
 2025-02-26 updated gw_log.py error handling
+
+2025-05-26 use TCP/IP sockets between gw_log and gw_web
+
+2025-05-27 change to UNIX sockets between gw_log and gw_web

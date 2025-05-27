@@ -154,12 +154,14 @@ def WriteDoorState(doorstate):
       f = open("gw_door_state", "w")
       f.write(doorstate)
       f.close()
+
       if gw_web_pid != "":
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                  s.connect((gwhost, gwlogport))
+            sockpath = "/tmp/gw_socket"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+#                  s.connect((gwhost, gwlogport))
+                  s.connect(sockpath)
                   s.sendall(doorstate.encode())
                   print('Sent Doorstate = ' + doorstate + '/n')
-      
 
 def DoorOpen():
          global ini_mtime
