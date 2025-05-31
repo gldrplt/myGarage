@@ -9,10 +9,10 @@ User=paul
 
 KillSignal=SIGTERM
 
-ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_log.stdout.log \
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_log.stdout \
 			     /home/paul/myprojects/myGarage/gw_log.stdout.old
 
-ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_log.stderr.log \
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_log.stderr \
 			     /home/paul/myprojects/myGarage/gw_log.stderr.old
 
 Environment=PATH=/home/paul/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -24,8 +24,8 @@ Environment=PATH=/home/paul/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bi
 ExecStart=/home/paul/.virtualenvs/myGarage/bin/python -u\
           /home/paul/myprojects/myGarage/gw_log.py
 
-StandardOutput=truncate:/home/paul/myprojects/myGarage/gw_log.stdout.log
-StandardError=truncate:/home/paul/myprojects/myGarage/gw_log.stderr.log
+StandardOutput=truncate:/home/paul/myprojects/myGarage/gw_log.stdout
+StandardError=truncate:/home/paul/myprojects/myGarage/gw_log.stderr
 
 [Install]
 WantedBy=multi-user.target
