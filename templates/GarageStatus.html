@@ -2,25 +2,37 @@
 <html lang=""en">
 <head>
 <meta name="viewport" content="width=device-width">
-
-<title>unknown hostname</title>
-<link rel="icon" type="image/x-icon" href="{{url_for('static', filename='images/color-garage.png')}}">
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/gwstyles.css') }}">
-
+<style>
+    .menu{
+        background-color: darkgray;
+		margin: auto;
+		width: 400px;
+		padding: 1em;
+		border: 1px solid #CCC;
+		border-radius: 1em;
+        text-align: left;
+    }
+</style>
+<title>Unknown Hostname</title>
+<link rel="stylesheet" href="/static/css/gwstyles.css">
+"
 <!-- get hostname -->
 <!-- update title -->
 <script>
-    const hn = {{ hostname|tojson }};
+    const hn = {{hostname|tojson}};
     document.title = 'myGarage - ' + hn;
+    function load(){
+        updateTime('clock');
+        SetFocus('garagecode');
+    }
 </script>
 
-<script type="text/javascript" src="{{ url_for('static', filename='js/mygarageclock.js') }}"></script>
-
-<script type="text/javascript" src="static/js/GarageStatus.js"></script>
+<script type="text/javascript" src="/static/js/GarageStatus.js"></script>
+<script type="text/javascript" src="/static/js/mygarageclock.js"></script>
 
 </head>
 
-<body onload="updateTime('clock')" bgcolor={{garcolor}}>
+<body onload="load()" bgcolor={{garcolor}}>
 
 <center>
     <br>
@@ -34,12 +46,19 @@
     </form>
     <img id="img1" src={{garimg}} width="70%" onclick="document.forms['garageform'].submit();">
     <p> Enter Activation Code </p><br>
-    <br><a href="/Log" class="link">Show Log File</a><br>
-    <br><a href="/Parms" class="link">Show config parms</a><br>
-    <br><a href="/ShowParmForm" class="link">Update config parameters</a><br><br>
-    <br><br><a href="/MyClock" class="link">Manage MyClock</a><br><br>
-    <br><br><input type="button" class="link" value="Reload Page" onclick="document.location.reload()"><br><br>
 
 </center>
+
+<div><form class="menu">
+    <p>Menu Options:</p>
+
+    <br><a href="/Log"                  class="link">Show Log File           </a><br>
+    
+    <br><a href="/ShowParmForm"         class="link">Display/Update config parameters</a><br>
+    <br><a href="/MyClock/Admin"    class="link">Manage MyClock          </a><br><br>
+    <!-- <br><br><input type="button" class="link" value="Reload Page" onclick="document.location.reload()"><br><br> -->
+</form>
+</div>
+<br><br>
 </body>
 </html>

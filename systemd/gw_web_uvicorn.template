@@ -1,0 +1,43 @@
+#
+# gw_web.service using uvicorn ASGI web server
+#
+# Set user
+# Set WorkingDirectory
+# Set PATH
+
+[Unit]
+Description=myGarage Web Service - uvicorn ASGI web server
+Requires=gw_log.service
+After=gw_log.service
+DefaultDependencies=no
+
+[Service]
+Type=simple
+User=paul
+Group=paul
+Restart=always
+RestartSec=1
+RemainAfterExit=yes
+
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stdout \
+			  /home/pi/myprojects/myGarage/gw_web.stdout.old
+ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stderr \
+			  /home/pi/myprojects/myGarage/gw_web.stderr.old
+
+# ExecStart for virtual env AND gunicorn web server
+WorkingDirectory=/home/paul/myprojects/myGarage
+Environment="PATH=/home/paul/.virtualenvs/myGarage/bin:/home/paul/bin"
+Environment="Running_Under_Systemd=true"
+Environment="PYTHONUNBUFFERED=1"
+
+ExecStart=/home/paul/.virtualenvs/myGarage/bin/uvicorn \
+	--host 0.0.0.0 \
+	--port 13233 \
+	--workers 1 \
+	gw_web:app
+
+StandardOutput=file:/home/paul/myprojects/myGarage/uvicorn.stdout
+StandardError=file:/home/paul/myprojects/myGarage/uvicorn.stderr
+
+[Install]
+WantedBy=multi-user.target

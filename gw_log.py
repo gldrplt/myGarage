@@ -33,6 +33,7 @@
 #################################################################################
 
 import os
+import sys
 import signal
 import time
 from datetime import datetime
@@ -161,7 +162,7 @@ def WriteDoorState(doorstate):
 #                  s.connect((gwhost, gwlogport))
                   s.connect(sockpath)
                   s.sendall(doorstate.encode())
-                  print('Sent Doorstate = ' + doorstate + '/n')
+                  print('Sent Doorstate = ' + doorstate + '\n')
 
 def DoorOpen():
          global ini_mtime
@@ -340,9 +341,10 @@ def gw_web_started(signum, frame):  # gw_web.py has started - get PID
 #  Start of Program
 #       
 ########################################################################
-
-#     initialize count of gw_web workers
-gw_web_cnt = 0
+#   if running under systemd, redirect stdout, stderr to file
+if os.getenv('running_under_systemd') == 'true':
+    sys.stdout = open('gw_web.stdout', 'w')
+    sys.stderr = open('gw_web.stderr', 'w')
 
 #     get signals constants
 mysignals = mySignals()

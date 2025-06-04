@@ -1,11 +1,13 @@
 ############################################################################
 #       gw_web.py
 #
-#       ver 5.0
+#       ver 6.0
 #
 #       No longer using gpiozero or RPi.GPIO
 #
-#       Monitors gw_door_state file to update door status
+#       uses FastAPI to allow websockets on ASGI web server
+#       
+#       uses websockets to refresh web page when door state changes
 #
 #       Use Unix Socket to listen to gw_log.py to 
 #       indicate change in door state
@@ -17,51 +19,37 @@
 import os
 import sys
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for
-from flask_sock import Sock
 import gw_Functions as gwf
 import psutil
 from threading import Event
 from threading import Thread
-from gw_Classes import mySignals
+from gw_Classes import mySignals,  ConnectionManager
 import re
 import socket
+#   FastAPI imports
+from fastapi import FastAPI, Form, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates  
+from typing import List
+import asyncio
+import uvicorn
 
-def DoorClosed():
-     global color, doorstate
-     print('at DoorClosed')
-     color = 'green'
-     doorstate = 'Closed'
-     Send_Door_Change()
+def Set_Door_State(state, loop):
+    global color, doorstate
+    print(f"at Set_Door_State - {state}")
+    doorstate = state
+    color = {'Closed': 'green', 'Closing': 'orange', 'Open': 'red', 'Opening': 'orange'}.get(state, 'orange')
+    loop.call_soon_threadsafe(asyncio.create_task, Send_Door_Change())
 
-def DoorClosing():
-     global color, doorstate
-     print('at DoorClosing')
-     color = 'orange'
-     doorstate = 'Closing'
-     Send_Door_Change()
 
-def DoorOpen():
-     global color, doorstate
-     print('at DoorOpen')
-     color = 'red'
-     doorstate = 'Open'
-     Send_Door_Change()
-
-def DoorOpening():
-     global color, doorstate  
-     print('at DoorOpening')   
-     color = 'orange'
-     doorstate = 'Opening'
-     Send_Door_Change()
-
-def Send_Door_Change():
+async def Send_Door_Change():
     global octime
     print()
     print(datetime.now())
     print("at Send_Door_Changed ...")
-    print("Clients = ",len(client_list))
-    for c in client_list:
+    print("Clients = ",len(manager.active_connections))
+    for c in manager.active_connections:
          print(c)
     print()
     
@@ -71,16 +59,9 @@ def Send_Door_Change():
 
     timecmd = 'time=' + fmttime
     doorcmd = 'door=' + doorstate
-    cl = client_list.copy()
-    for client in cl:
-        try:
-            print('sending ' + timecmd)
-            client.send(timecmd)     # send new octime
-            print('sending ' + doorcmd + '\n')
-            client.send(doorcmd)     # send color
-        except:
-            print('\n  no web socket\n  ', client)
-            client_list.remove(client)
+
+    await manager.broadcast(timecmd)
+    await manager.broadcast(doorcmd)
 
 def shutdown():                 # shutdown raspberry pi
     print("at shutdown")
@@ -104,8 +85,9 @@ def chkprog(pname):
                     return True
      return False
 
-def listen_to_gw_log():
+def listen_to_gw_log(loop):
     global doorstate
+    print("listen_to_gw_log starting ...")
 
     # use UNIX Sockets to be notified of change in door status
     HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
@@ -127,24 +109,46 @@ def listen_to_gw_log():
                         break
                     doorstate = x.decode()
                     print('Door State Changed to: ' + doorstate)
-                    if doorstate == "Closed":
-                        DoorClosed()
-                    elif doorstate == "Closing":
-                        DoorClosing()
-                    elif doorstate == "Open":
-                        DoorOpen()
-                    elif doorstate == "Opening":
-                        DoorOpening()
+                    if doorstate in ["Closed", "Closing", "Open", "Opening"]:
+                        Set_Door_State(doorstate, loop)
                     else:
-                        print('Door state unknown') 
+                        print('Door state unknown')
+
     print('gw_web ending ...\n')
+
+def process_web_page_cmd(data):
+        try:
+            cmdArray = data.split("=")
+            cmdType = cmdArray[0]
+            cmd = cmdArray[1]
+        except:
+            print("Illegal cmd sent...")
+            return
+
+        if cmdType == "GarageStatus":
+             print(manager.active_connections)
+
+        if cmdType == "Admin":
+            print("... received data from webadmin page ...")
+            print(cmd,'\n')
+            if cmd == 'reboot':
+                reboot()
+            if cmd == 'shutdown':
+                shutdown()
+            if cmd == 'close':
+                close() 
+
 ######################################################
 #
 #   Program Start
 #
 ########################################################
-t_flag = False              # test flag
-gunicorn_flag = False       # gunicorn flag
+
+#   if running under systemd, redirect stdout, stderr to file
+if os.getenv('Running_Under_Systemd') == 'true':
+    sys.stdout = open('gw_web.stdout', 'w')
+    sys.stderr = open('gw_web.stderr', 'w')
+
 print('Parmstring = ',sys.argv)
 print()
 print('PYTHONUNBUFFERED = ',os.getenv('PYTHONUNBUFFERED'))
@@ -152,15 +156,8 @@ print('PYTHONUNBUFFERED = ',os.getenv('PYTHONUNBUFFERED'))
 originalstdout = sys.stdout 
 originalstderr = sys.stderr
 
-#   if running in gunicorn redirect stdout, stderr to file
-p = os.getenv('gw_web_gunicorn_flag')
-if p == 'True' : gunicorn_flag = True
-
-if gunicorn_flag is True:
-    sys.stdout = open('gw_web.stdout', 'w')
-    sys.stderr = open('gw_web.stderr', 'w')
-
 #   if running in test mode
+t_flag = False              # test flag
 try:
      if sys.argv[1] == '-t': t_flag = True
 except:
@@ -208,17 +205,15 @@ print('Hostname = ',hostname, '\n')
 homedir = os.getenv("HOME")
 print('Home Directory = ',homedir,'\n')
       
-#   Create Flask and WebSocket instances
-app = Flask(__name__)   # Flask instance
-app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
-sock = Sock(app)        # Web Socket instance
+#   Create FastAPI and WebSocket instances
+app = FastAPI()                 
+manager = ConnectionManager()
 
-#   Initialize websocket instances
-ws = None
-myws = None
+#   serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-#   Initialize array of clients
-client_list = []
+#   Jinja2 templates
+templates = Jinja2Templates(directory="templates")
 
 #   Build dictionary or parms
 gwdict={}	        		        #empty dictionary
@@ -233,7 +228,9 @@ pinstatus = None        # Flag to show status of PIN code
 invertlog = False       # sort direction for log file display 
 octime = datetime.now() # set initial value of open/close time
 milflag = False         # initialize milflag
-dateflag = False        # initialize datefla
+dateflag = False        # initialize dateflag
+global_logday = 0       # initialize global_logday
+
 
 #   Determine door status
 with open('gw_door_state', 'r') as f:
@@ -248,7 +245,8 @@ with open('gw_octime.txt', "r") as f:
      octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
 
 #   use UNIX sockets to listen to gw_log.py
-listenthread = Thread(target = listen_to_gw_log)
+mainloop = asyncio.get_event_loop()
+listenthread = Thread(target = listen_to_gw_log, args=(mainloop,))
 listenthread.daemon = True
 listenthread.start()
 
@@ -258,61 +256,76 @@ listenthread.start()
 #
 ####################################################
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
+
+@app.get("/", response_class=HTMLResponse)
+async def homepage(request: Request):
+#        return templates.TemplateResponse("GarageStatus.html",{"request": request})
+
 #       render Garage Status Form based on garage door position        
         print("at Route / ")
         global garstatus
         global doorstate
+        global garcolor
         global invertlog
+
 #       flush stdout, stderr buffers
         sys.stdout.flush()
         sys.stderr.flush()
+
 #       reset invertlog flag
         invertlog = False
 
 #       Get status of garage door and set status message
-
+#       if invalid PIN entered set garstatus
         if doorstate == "Open":
             garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
             if pinstatus == False:
-                 garstatus = "Invalid PIN ..."
-            garimg = 'static/images/GarageRed.gif'
-            return render_template('GarageStatus.html', garname=gwdict['gwGarageName'], garstatus=garstatus,
-                                       garimg=garimg, garcolor='red', hostname=hostname)
+                garstatus = "Invalid PIN ..."
+            garimg = '/static/images/GarageRed.gif'
+            garcolor = 'red'
 
         elif doorstate == "Closed":
-           garstatus = "is Closed since " + octime.strftime("%l:%M:%S %P")
-           if pinstatus == False:
+            garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
+            if pinstatus == False:
                 garstatus = "Invalid PIN ..."
-           garimg = 'static/images/GarageGreen.gif'
-           return render_template('GarageStatus.html', garname=gwdict['gwGarageName'], garstatus=garstatus,
-                                       garimg=garimg, garcolor='green', hostname=hostname)
+            garimg = '/static/images/GarageGreen.gif'
+            garcolor = 'green'
            
         elif doorstate == "Opening":
             garstatus = "Is Opening"
             garimg = '/static/images/GarageQuestion.gif'
-            return render_template('GarageStatus.html', garname=gwdict['gwGarageName'], garstatus=garstatus,
-                                    garimg=garimg, garcolor='orange', hostname=hostname)
+            garcolor = 'orange'
 
         elif doorstate == "Closing":
             garstatus = "Is Closing"
             garimg = '/static/images/GarageQuestion.gif'
-            return render_template('GarageStatus.html', garname=gwdict['gwGarageName'], garstatus=garstatus,
-                                    garimg=garimg, garcolor='orange', hostname=hostname)
+            garcolor = 'orange'
         else:
             garstatus = "Status Unknown"
             garimg = '/static/images/GarageQuestion.gif'
-            return render_template('GarageStatus.html', garname=gwdict['gwGarageName'], garstatus=garstatus,
-                                    garimg=garimg, garcolor='orange', hostname=hostname)
+            garcolor = 'orange'
+#    return templates.TemplateResponse("mytest.html", {"request": request, "mypgm": "mytest.py"})
+
+        return templates.TemplateResponse('GarageStatus.html',\
+                                          {"request": request,\
+                                           "garname": gwdict['gwGarageName'],\
+                                           "gar": doorstate,\
+                                           "garstatus": garstatus,\
+                                           "garimg": garimg,\
+                                           "garcolor": garcolor,\
+                                           "hostname": hostname\
+                                           })
                         
-@app.route('/Garage', methods=['GET', 'POST'])
-def Garage():
+@app.post('/Garage')
+async def handle_form(garagecode: str = Form(...)):
+        print(f"Received form submission: GarageCode = {garagecode}")
+        
+        
 #       Garage Activation Code Entered
         global garstatus
         global pinstatus
         print("at Route /Garage")
-        pin = request.form['garagecode']
+        pin = garagecode
         if pin == "" :
            pin = "NULL"
            garstatus = ''
@@ -330,175 +343,114 @@ def Garage():
            gwf.sendsignal(gw_log_pid, "12")
            print("Invalid PIN ...",pin)
            
-        return redirect("/")   
+        return RedirectResponse(url='/', status_code=303)
 
-@sock.route('/launch')
-def launch(ws):
-     global myws
-     myws = ws
-#     client_list.append(ws)     # add new client
-     print('\nat /launch \nws = ',ws)
-     loop = True
-     while loop:
-        data = ws.receive()
-        cmd = ""
-        cmdType = ""
-        try:
-            cmdArray = data.split("=")
-            cmdType = cmdArray[0]
-            cmd = cmdArray[1]
-        except:
-            print("Illegal cmd sent...")
-            continue
-
-        if cmdType == "GarageStatus":
-             print(data)
-             if cmd == "new client":     client_list.append(ws) # add new garage status client
-             if cmd == "remove client" : 
-                  client_list.remove(ws) # remove client
-                  print(ws)
-             print("Client List", len(client_list))
-             for c in client_list:
-                  print(c)
-             print()
-
-        if cmdType == "Admin":
-            print("... received data from webadmin page ...")
-            print(cmd,'\n')
-            if cmd == 'reboot':
-                reboot()
-            if cmd == 'shutdown':
-                shutdown()
-            if cmd == 'close':
-                close() 
-
-     print('...loop exited...') 
-     return "<p>Hello, World!</p>"
+@app.websocket('/launch')
+async def websocket_endpoint(websocket: WebSocket):
+     await manager.connect(websocket)
+     try:
+          while True:
+               data = await websocket.receive_text()
+               process_web_page_cmd(data)
+     except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 #       MyClock routes
+@app.get("/MyClock/{option}", response_class=HTMLResponse)
+async def MyClock(request: Request, option: str = "Admin"):
+      print(f"at MyClock/{option} ...")
+      global milflag
+      global dateflag
+      if option == 'Admin':
+           pass
+      elif option == 'Show':
+           os.system(homedir + "/bin/myclock +s")
+      elif option == 'Blank':
+           os.system(homedir + "/bin/myclock -s")
+      elif option == 'ToggleMil':
+           if milflag:
+               milflag = False
+               p = "-m"
+           else:
+               milflag = True
+               p = "+m"
+           cmd = homedir + "/bin/myclock "+p
+           print(cmd)
+           os.system(cmd)
+      elif option == 'ToggleDate':
+           if dateflag:
+               dateflag = False
+               p = "-d"
+           else:
+               dateflag = True
+               p = "+d"
+           cmd = homedir + "/bin/myclock "+p
+           print(cmd)
+           os.system(cmd)
+      elif option == 'Mil':
+           os.system(homedir + "/bin/myclock +m")
+      elif option == 'notMil':
+           os.system(homedir + "/bin/myclock -m")
+      elif option == 'Dim':
+           os.system(homedir + "/bin/myclock -b 0")
+      elif option == 'Bright':
+           os.system(homedir + "/bin/myclock -b 1")
+      elif option == 'Segments':
+           os.system(homedir + "/bin/myclock -f")
+      elif option == 'RestartClock':
+           os.system(homedir + "/bin/restartclock")
 
-@app.route('/MyClock')
-def MyClock():
-      print("at MyClock ...")
-      return render_template('mygarageclock.html')
+#      return RedirectResponse(url='/MyClock/Admin')
 
-@app.route('/Show')
-def Show():
-    print("at Show\n")
-    os.system(homedir + "/bin/myclock +s")
-    return redirect('/MyClock')
+      return templates.TemplateResponse('mygarageclock.html', {"request": request})
 
-@app.route('/Blank')
-def Blank():
-    print("at Blank\n")
-    os.system(homedir + "/bin/myclock -s")
-    return redirect('/MyClock')
-    
-@app.route('/ToggleMil')
-def ToggleMil():
-    global milflag
-    print("at ToggleMil ",milflag)
-    if milflag:
-        milflag = False
-        p = "-m"
-    else:
-        milflag = True
-        p = "+m"
-    cmd = homedir + "/bin/myclock "+p
-    print(cmd)
-    os.system(cmd)
-    return redirect('/MyClock')
-
-@app.route('/ToggleDate')
-def ToggleDate():
-    global dateflag
-    print("at ToggleDate ",dateflag)
-    if dateflag:
-        dateflag = False
-        p = "-d"
-    else:
-        dateflag = True
-        p = "+d"
-    cmd = homedir + "/bin/myclock "+p
-    print(cmd)    
-    os.system(cmd)
-    return redirect('/MyClock')
-
-@app.route('/Mil')
-def Mil():
-    print("at MIL\n")
-    os.system(homedir + "/bin/myclock +m")
-    return redirect('/MyClock')
-
-@app.route('/notMIL')
-def notMIL():
-    print("at notMIL\n")
-    os.system(homedir + "/bin/myclock -m")
-    return redirect('/MyClock')
-
-@app.route('/Dim')
-def Dim():
-    print("at Dim\n")
-    os.system(homedir + "/bin/myclock -b 0")
-    return redirect('/MyClock')
-
-@app.route('/Bright')
-def Bright():
-    print("at Bright\n")
-    os.system(homedir + "/bin/myclock -b 1")
-    return redirect('/MyClock')
-
-@app.route('/Segments')
-def Segments():
-    print("at Segments\n")
-    os.system(homedir + "/bin/myclock -f")
-    return redirect('/MyClock')
-
-@app.route('/RestartClock')
-def RestartClock():
-    print("at RestartClock\n")
-    os.system(homedir + "/bin/restartclock")
-    return redirect('/MyClock')
         
-@app.route('/Admin')
-def Admin():
+@app.get('/Admin', response_class=HTMLResponse)
+def Admin(request: Request):
     print("at Admin")
-    return render_template('webadmin.html')
+    return templates.templates('webadmin.html')
 
 #       end of MyClock routes
 
-@app.route('/Log',methods=['GET', 'POST'])
-def logfile():
+@app.get('/Log', response_class=HTMLResponse)
+def logfile(request: Request):
         global invertlog
-#        global logdata
+        global logday
+
         print('at Route /Log')
         logfname = gwdict['gwLogFile']
         ans = gwf.getlogdays(logfname)
         cnt = len(ans)
-
-        if request.method == "POST":  # if at /Log get requested logday
-             lday = request.form['logday']
-             logdata = ans[cnt - 1 + int(lday)]
-        else:
-             lday = "0"
-             logdata = ans[cnt - 1] # get last logday 
+        logdata = ans[cnt - 1 + int(global_logday)]
 
         # remove color escape sequences
         # Regex to match ANSI escape sequences
         # my pattern \x1b\[[0-9;]*m
         pattern = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
         logdata = re.sub(pattern,'', logdata)  # Remove escape sequences
-
-        fmtdata = logdata
         
         z = datetime.now()
         logdate = z.strftime("%Y %b %d %H:%M:%S")
 
-        return render_template('ShowLog.html', fmtdate=logdate, fmtdata=logdata,\
-                                fmtlday=lday, fmtnumdays=cnt)
+        # return render_template('ShowLog.html', fmtdate=logdate, fmtdata=logdata,\
+        #                         fmtlday=lday, fmtnumdays=cnt)
+        return templates.TemplateResponse("ShowLog.html", \
+                                          {"request": request,\
+                                           "fmtdate": logdate,\
+                                           "fmtdata": logdata,\
+                                           "fmtlday": global_logday,\
+                                           "fmtnumdays": cnt\
+                                           })
 
-@app.route('/ShowParmForm')
-def ShowParmForm():
+@app.post('/getlog')
+async def get_logday(logday: str = Form(...)):
+    global global_logday
+    global_logday = logday
+    return RedirectResponse(url='/Log', status_code=303)
+
+@app.get('/ShowParmForm', response_class=HTMLResponse)
+async def ShowParmForm(request: Request):
+        print("at /ShowParmForm")    
         a = gwdict['gwGarageName']
         b = gwdict['gwCode']
         c = gwdict['gwOpenWarning']
@@ -513,74 +465,78 @@ def ShowParmForm():
         l = gwdict['sms_url2']
         m = gwdict['pwm_duty']
         
-        return render_template('parmform.html',
-         p_gname = a,
-         p_code = b,
-         p_openwarn = c,
-         p_closedoor = d,
-         p_opentime = e,
-         p_sendsms = f,
-         p_boottime = g,
-         p_logdays = h,
-         p_phone1 = i,
-         p_phone2 = j,
-         p_url1 = k,
-         p_url2 = l,
-         p_led = m
-        )
-@app.route('/ProcParmForm',methods=['GET', 'POST'])
-def ProcParmForm():
-        gwdict['gwGarageName'] = request.form['frm_gname']
-        gwdict['gwCode'] = request.form['frm_code']
-        gwdict['gwOpenWarning'] = request.form['frm_warn']
-        gwdict['gwCloseDoor'] = request.form['frm_close']
-        gwdict['gwOpenTime'] = request.form['frm_opentime']
-        gwdict['smsMsg'] = request.form['frm_sendsms']
-        gwdict['gwBootTime'] = request.form['frm_boottime']
-        gwdict['gwLogDays'] = request.form['frm_logdays']
-        gwdict['sms_phone1'] = request.form['frm_phone1']
-        gwdict['sms_phone2'] = request.form['frm_phone2']
-        gwdict['sms_url1'] = request.form['frm_url1']
-        gwdict['sms_url2'] = request.form['frm_url2']
-        gwdict['pwm_duty'] = request.form['frm_led']
+        return templates.TemplateResponse('parmform.html', \
+                                          {"request": request,\
+                                           "p_gname" : a, \
+                                           "p_code" : b, \
+                                            "p_openwarn" : c, \
+                                            "p_closedoor" : d, \
+                                            "p_opentime" : e, \
+                                            "p_sendsms" : f, \
+                                            "p_boottime" : g, \
+                                            "p_logdays" : h, \
+                                            "p_phone1" : i, \
+                                            "p_phone2" : j, \
+                                            "p_url1" : k, \
+                                            "p_url2" : l, \
+                                            "p_led" : m, \
+                                          })
+
+@app.post('/ProcParmForm')
+async def ProcParmForm(frm_gname: str = Form(...),\
+                       frm_code: str = Form(...), \
+                       frm_warn: str = Form(...),\
+                       frm_close: str = Form(...),\
+                       frm_opentime: str = Form(...),\
+                       frm_sendsms: str = Form(...),\
+                       frm_boottime: str = Form(...),\
+                       frm_logdays: str = Form(...),\
+                       frm_phone1: str = Form(...),\
+                       frm_phone2: str = Form(...),\
+                       frm_url1: str = Form(...),\
+                       frm_url2: str = Form(...),\
+                       frm_led: str = Form(...) \
+                       ):
+        global gwdict
+
+        gwdict['gwGarageName'] = frm_gname
+        gwdict['gwGarageName'] = frm_gname
+        gwdict['gwCode'] = frm_code
+        gwdict['gwOpenWarning'] = frm_warn
+        gwdict['gwCloseDoor'] = frm_close
+        gwdict['gwOpenTime'] = frm_opentime
+        gwdict['smsMsg'] = frm_sendsms
+        gwdict['gwBootTime'] = frm_boottime
+        gwdict['gwLogDays'] = frm_logdays
+        gwdict['sms_phone1'] = frm_phone1
+        gwdict['sms_phone2'] = frm_phone2
+        gwdict['sms_url1'] = frm_url1
+        gwdict['sms_url2'] = frm_url2
+        gwdict['pwm_duty'] = frm_led
         
         gwf.update_ini(parmfile, gwdict, gwdictcomment)
-        return redirect('/')
-
-@app.route('/Parms')
-def Parms():
-        with open(parmfile, 'r') as f:
-            pdata = f.read()
-        return render_template('parms.html', parmdata=pdata)
-
-@app.route('/TestSMS')
-def test_sms():
-        msg = '-\nGarage Monitor Application\n\nThis is a test message :\n'
-        msg = msg + 'Open Time = ' + gwdict['gwOpenTime'] + ' minutes\n\n\n' 
-        urlmsg = ''
-        if gwdict['sms_url1'] != '' :
-           urlmsg = urlmsg + "Local URL : " + gwdict['sms_url1'] +'\n\n\n'
-        if gwdict['sms_url2'] != '' :
-           urlmsg = urlmsg + "Remote URL : " + gwdict['sms_url2'] + '\n'
-        msg = msg + urlmsg
         
-        gwf.send_sms(gwdict, msg)
-        return redirect('/')
+        return RedirectResponse(url="/", status_code=303)
+
+@app.post('/NoProcParmForm')
+def NoProcParmForm():
+     return RedirectResponse(url="/", status_code=303)
+
 
 ##########################################################
 #
-#   Launch Flask Web Server
+#   Launch FastAPI ASGI Web Server
 #
 ##########################################################
 #   flush stdout, stderr buffers
 sys.stdout.flush()
 sys.stderr.flush()
 now = datetime.now()
-msg = now.strftime("\n%H:%M:%S gw_web.py at Launch Flask ...\n")
+msg = now.strftime("\n%H:%M:%S gw_web.py at Launch FastAPI ASGI server ...\n")
 print(msg)
 
 if __name__ == '__main__':
-        app.run(debug=False, host='0.0.0.0', port=int(gwdict['gwPort']))
+        uvicorn.run(app, host='0.0.0.0', port=int(gwdict['gwPort']))
 
 now = datetime.now()
 msg = now.strftime("\n%H:%M:%S gw_web.py ended ...\n")

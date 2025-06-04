@@ -1,6 +1,6 @@
 // my functions
 async function sleep(ms) {
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, ms));
 }
 function sendmsg(msg){
     //socket.send('GarageStatus=' + 'new client');
@@ -17,7 +17,18 @@ function set_cookie(){
 function get_cookie(){
     const x = localStorage.getItem("timestr");
     document.getElementById('demofld').innerHTML = "timestr = " + x;
-} 
+}
+
+function SetFocus(fld){
+    const focusfld = document.getElementById(fld);
+    const length = focusfld.value.length;
+    focusfld.focus();
+    focusfld.setSelectionRange(length, length);
+    
+    // document.getElementById("logday").focus();
+}
+
+// alert("java script found")
 
 // declare global variables
 let octime = "",
@@ -42,9 +53,11 @@ socket.addEventListener('open', ev => {
     sendmsg();
 })
  */
-socket.onopen = function(){
-    sendmsg(msg);
+socket.onopen = () => {
+    console.log("new web socket");
+    socket.sendmsg(msg);
 }
+
 /* 
 socket.onopen = (ev) => {
     console.log("new web socket");
@@ -102,12 +115,13 @@ socket.addEventListener('message', ev => {
 
         }
         });
-
+/*
 window.addEventListener("beforeunload", event => {
     // send message to gw_web.py to remove client from list
     socket.send('GarageStatus=' + 'remove client');
     socket.close()
 });
+*/
 
 /* 
 const terminationEvent = 'onpagehide' in self ? 'pagehide' : 'unload';
@@ -117,4 +131,5 @@ window.addEventListener(terminationEvent, (event) => {
         socket.onclose = function () { };
         socket.close();
     }
-}); */
+});
+*/

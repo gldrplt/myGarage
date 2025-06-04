@@ -1,8 +1,7 @@
 <html>
 <!-- <META HTTP-EQUIV="refresh" CONTENT="5"> -->
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/gwstyles.css') }}">	
-<link rel="stylesheet" type="text/css" href="/home/paul/myprojects/myGarage/static/css/gwstyles.css">
 
+<link rel="stylesheet" href="/static/css/gwstyles.css">
 <script>
     function refresh(){
         window.location = "/Log";
@@ -33,7 +32,7 @@
 <p class="p2">Log File as of {{fmtdate}}
 <span class="p3"><br>(There are {{fmtnumdays}} days in log file)</span></p>
 <br>
-<form action="/Log" method="post" id="logform" class="logform">
+<form action="/getlog" method="post" id="logform" class="logform">
     <label for="logday">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
     <input class="lday" id="logday" name="logday" type="text "pattern="?-[0-9]*" 
     value="{{fmtlday}}" STYLE="background-color:white;", size="4" >

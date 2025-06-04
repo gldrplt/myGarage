@@ -9,6 +9,7 @@ body {
 .a{
     font-size: 24pt;
     text-decoration: none;
+    
 }
 .a:link    {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
 .a:visited {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}

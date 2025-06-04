@@ -1,8 +1,8 @@
 ############################################
 #
-#	myGarage project v5.1
+#	myGarage project v6.0
 #
-#	2025-05-31
+#	2025-06-01
 #
 ############################################
 
@@ -13,11 +13,12 @@ Monitor and control garage door
 - insure that RPi.GPIO module is installed in virtual environment
 
 - uses web sockets in gw_web.py to dynamically show door state
-  NOTE: not compatible with gunicorn WSGI web server
+  NOTE: must use FastAPI and Uvicorn to run ASGI web server
 
 - gw_log.py uses UNIX sockets to notify gw_web.py of change
   in door state
 
+- us
 2024-01-10 updated scope of octime to global
            corrected determining last octime on startup gw_web.py
 
@@ -70,3 +71,6 @@ Monitor and control garage door
 2025-05-26 use TCP/IP sockets between gw_log and gw_web
 
 2025-05-27 change to UNIX sockets between gw_log and gw_web
+
+2025-06-01 use FastAPI and Uvicorn
+
