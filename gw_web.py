@@ -408,7 +408,7 @@ async def MyClock(request: Request, option: str = "Admin"):
 @app.get('/Admin', response_class=HTMLResponse)
 def Admin(request: Request):
     print("at Admin")
-    return templates.templates('webadmin.html')
+    return templates.TemplateResponse('webadmin.html', {'request': request})
 
 #       end of MyClock routes
 
