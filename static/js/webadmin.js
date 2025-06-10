@@ -1,7 +1,7 @@
 // functions to control web server
 
 // establish web-socket
-const socket = new WebSocket('ws://' + location.host + '/launch');
+const socket = new WebSocket('ws://' + location.host + '/get_web_cmd');
 
 function goback() {
     history.back();

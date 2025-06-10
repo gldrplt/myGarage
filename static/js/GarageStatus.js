@@ -2,12 +2,19 @@
 async function sleep(ms) {
     await new Promise(resolve => setTimeout(resolve, ms));
 }
-function sendmsg(msg){
-    //socket.send('GarageStatus=' + 'new client');
-    //confirm('msg ='+msg);
-    console.log("sending : "+msg);
+
+function sendgaragecode(code){
+    console.log('at sendgaragecode');
+    const msg = "GarCode=" + code;
+    console.log("sending : " + msg);
+    socket.send(msg);
+}
+
+function sendwebmsg(msg){
+    console.log('at sendwebmsg ...');
     socket.send(msg);
 }    
+
 function set_cookie(){
     const t = new Date();
     let x = fmtTime(t);
@@ -24,112 +31,38 @@ function SetFocus(fld){
     const length = focusfld.value.length;
     focusfld.focus();
     focusfld.setSelectionRange(length, length);
-    
-    // document.getElementById("logday").focus();
+   
 }
 
-// alert("java script found")
-
-// declare global variables
-let octime = "",
-    cmd,
-    cmdArray,
-    cmdtype,
-    garimg,
-    garstatus,
-    msg
-;
 // establish web-socket
-const socket = new WebSocket('ws://' + location.host + '/launch');
-/*
-    use either socket.addEventlistener('open', ev)
-    or socket.onopen = function()
-*/
+const socket = new WebSocket('ws://' + location.host + '/get_web_cmd');
 
-msg = "GarageStatus=new client";
-/* 
-socket.addEventListener('open', ev => {
-    console.log("Socket Opened");
-    sendmsg();
-})
- */
 socket.onopen = () => {
-    console.log("new web socket");
-    socket.sendmsg(msg);
-}
-
-/* 
-socket.onopen = (ev) => {
-    console.log("new web socket");
-    sendmsg();
-}
- */
+    console.log("new web socket " + socket);
+    }
 
 
 // listen for message from web server
 socket.addEventListener('message', ev => {
-        msg = ev.data;
-        
+        jsonmsg = ev.data;
+        console.log('received ' + jsonmsg);
         // parse and process message
-        cmdArray = msg.split("=");
-        cmdtype = cmdArray[0];
-        cmd = cmdArray[1];
-        
-        if (cmdtype == 'PIN'){
-            garstatus = 'Invalid PIN ... ' + cmd
-            }
+        const msg=JSON.parse(jsonmsg);
 
-        if (cmdtype == 'time'){
-            octime = cmd;
-            }
-
-        if (cmdtype == 'door'){
-            let garimg;
-            let garstatus;
-
-            if (cmd == 'Open'){
-                document.body.style.backgroundColor = 'red';
-                garimg = '/static/images/GarageRed.gif';
-                garstatus = 'Garage is Open since ' + octime;
-            }
-            if (cmd == 'Closed'){
-                document.body.style.backgroundColor = 'green';
-                garimg = '/static/images/GarageGreen.gif';
-                garstatus = 'Garage is Closed since ' + octime;
-            }
-
-            if (cmd == 'Closing'){
-                document.body.style.backgroundColor = 'orange';
-                garimg = '/static/images/GarageQuestion.gif';
-                garstatus = 'Garage is Closing';
-            }
-            if (cmd == 'Opening'){
-                document.body.style.backgroundColor = 'orange';
-                garimg = '/static/images/GarageQuestion.gif';
-                garstatus = 'Garage is Opening';
-            }
-
-            // set garimg and garstatus
-            document.getElementById('img1').src = garimg;
-            document.getElementById('status').innerText = garstatus;
-
+        if (msg.type == 'door'){
+            // set garimg, garcolor and garstatus
+            document.body.style.backgroundColor = msg.color;
+            document.getElementById('img1').src = msg.image;
+            document.getElementById('status').innerText = msg.status;
         }
-        });
-/*
-window.addEventListener("beforeunload", event => {
-    // send message to gw_web.py to remove client from list
-    socket.send('GarageStatus=' + 'remove client');
-    socket.close()
-});
-*/
-
-/* 
-const terminationEvent = 'onpagehide' in self ? 'pagehide' : 'unload';
-window.addEventListener(terminationEvent, (event) => {
-    if (event.persisted === false) {
-        // client is gone
-        socket.onclose = function () { };
-        socket.close();
-    }
-});
-*/
+        if (msg.type == 'pin'){
+            document.getElementById('status').innerText = 'Invalid PIN ...';
+        }
+        if (msg.type == 'log'){
+            debugger;
+            localStorage.setItem("loghdr", msg.loghdr);
+            localStorage.setItem("logday", msg.logday);
+            localStorage.setItem("logdata", msg.logdata);
+            console.log(msg)
+        }
+    });

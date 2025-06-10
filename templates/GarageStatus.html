@@ -2,20 +2,23 @@
 <html lang=""en">
 <head>
 <meta name="viewport" content="width=device-width">
-<style>
-    .menu{
-        background-color: darkgray;
-		margin: auto;
-		width: 400px;
-		padding: 1em;
-		border: 1px solid #CCC;
-		border-radius: 1em;
-        text-align: left;
-    }
-</style>
+
 <title>Unknown Hostname</title>
+<style>
+.menu{
+	background-color: darkgray;
+	margin: auto;
+	width: 400px;
+	padding: 1em;
+	border: 1px solid #CCC;
+	border-radius: 1em;
+	text-align: left;
+}
+</style>
+
 <link rel="stylesheet" href="/static/css/gwstyles.css">
-"
+<link rel="stylesheet" href="/static/css/floating_input.css"
+
 <!-- get hostname -->
 <!-- update title -->
 <script>
@@ -23,7 +26,6 @@
     document.title = 'myGarage - ' + hn;
     function load(){
         updateTime('clock');
-        SetFocus('garagecode');
     }
 </script>
 
@@ -39,26 +41,41 @@
     <p id="name"> {{garname}} </p>
     <p id="status"> {{garstatus}}</p>
     <p id="clock">time goes here</p>
+    
+	<div class="floating-label">
+	  <input type="number" id="garagecode" placeholder=" " size="6" maxlength="6"/>
+	  <label for="garagecode">Enter PIN: </label>
+	</div>
 
-
-    <form action="/Garage" method="post" id="garageform">
-        <input class="a" id="garagecode" name="garagecode" type="text "pattern="[0-9]*" value="" STYLE="background-color:white;">
-    </form>
-    <img id="img1" src={{garimg}} width="70%" onclick="document.forms['garageform'].submit();">
+    <img id="img1" src={{garimg}} width="70%">
     <p> Enter Activation Code </p><br>
-
 </center>
 
-<div><form class="menu">
+<div>
+    <form class="menu">
     <p>Menu Options:</p>
-
     <br><a href="/Log"                  class="link">Show Log File           </a><br>
-    
     <br><a href="/ShowParmForm"         class="link">Display/Update config parameters</a><br>
     <br><a href="/MyClock/Admin"    class="link">Manage MyClock          </a><br><br>
-    <!-- <br><br><input type="button" class="link" value="Reload Page" onclick="document.location.reload()"><br><br> -->
-</form>
+    </form>
 </div>
 <br><br>
 </body>
+<script>
+    console.log('create Listener for garagecode');
+	mygaragecode = document.getElementById("garagecode");
+    mygaragecode.addEventListener('blur', function() {
+        const code = mygaragecode.value;
+		sendgaragecode(code);
+        console.log('setting garagecode to blank')
+        document.getElementById("garagecode").value = "";
+    });
+    const input = document.getElementById("garagecode");
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+        input.blur(); // removes focus from the input field
+        };
+    });
+</script>
+
 </html>

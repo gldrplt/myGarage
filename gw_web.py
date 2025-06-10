@@ -34,6 +34,7 @@ from fastapi.templating import Jinja2Templates
 from typing import List
 import asyncio
 import uvicorn
+import json
 
 def Set_Door_State(state, loop):
     global color, doorstate
@@ -42,9 +43,9 @@ def Set_Door_State(state, loop):
     color = {'Closed': 'green', 'Closing': 'orange', 'Open': 'red', 'Opening': 'orange'}.get(state, 'orange')
     loop.call_soon_threadsafe(asyncio.create_task, Send_Door_Change())
 
-
 async def Send_Door_Change():
     global octime
+    global garstatus, garimg, garcolor
     print()
     print(datetime.now())
     print("at Send_Door_Changed ...")
@@ -57,11 +58,25 @@ async def Send_Door_Change():
     octime = datetime.now()
     fmttime = octime.strftime("%l:%M:%S %P")
 
-    timecmd = 'time=' + fmttime
-    doorcmd = 'door=' + doorstate
+    # timecmd = 'time=' + fmttime
+    # doorcmd = 'door=' + doorstate
 
-    await manager.broadcast(timecmd)
-    await manager.broadcast(doorcmd)
+    # await manager.broadcast(timecmd)
+    # await manager.broadcast(doorcmd)
+
+    garimg = garage_images.get(doorstate, '/static/images/GarageQuestion.gif')
+    garcolor = garage_colors.get(doorstate, 'orange')
+    garstatus = garage_statuses.get(doorstate, 'status unknown')
+    if doorstate in 'OpenClosed': garstatus = garstatus + ' ' + fmttime
+    if not pinstatus:
+         garstatus = "Invalid PIN"
+    mydict = dict( type = 'door',\
+                state = doorstate,
+                status = garstatus,\
+                image = garimg,\
+                color = garcolor)
+    data = json.dumps(mydict)
+    await manager.broadcast(data)
 
 def shutdown():                 # shutdown raspberry pi
     print("at shutdown")
@@ -116,7 +131,9 @@ def listen_to_gw_log(loop):
 
     print('gw_web ending ...\n')
 
-def process_web_page_cmd(data):
+async def process_web_page_cmd(data):
+        global pinstatus
+        global garstatus
         try:
             cmdArray = data.split("=")
             cmdType = cmdArray[0]
@@ -137,6 +154,49 @@ def process_web_page_cmd(data):
                 shutdown()
             if cmd == 'close':
                 close() 
+
+        if cmdType == 'GarCode':
+            pin = cmd
+            print("PIN = " + pin)
+            if pin == gwdict['gwCode']:  # Code if Password is correct
+                garstatus = ''
+                pinstatus = True
+                print("Sending SIGUSR1 (10) to gw_log.py "+gw_log_pid)
+                gwf.sendsignal(gw_log_pid, "10") 
+            elif pin != "":          # Code if Password is incorrect
+                pinstatus = False         # invalid PIN   
+                print("Sending SIGUSR1 (12) to gw_log.py "+gw_log_pid)           
+                gwf.sendsignal(gw_log_pid, "12")
+                print("Invalid PIN ...",pin)
+
+                mydict = dict(type = 'pin')
+                data = json.dumps(mydict)
+                await manager.broadcast(data)
+        
+        if cmdType == 'Log':
+            print('at get log data for: ',data)
+
+            logfname = gwdict['gwLogFile']
+            ans = gwf.getlogdays(logfname)
+            cnt = len(ans)
+            logdata = ans[cnt - 1 + int(cmd)]
+            # remove color escape sequences
+            # Regex to match ANSI escape sequences
+            # my pattern \x1b\[[0-9;]*m
+            pattern = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+            logdata = re.sub(pattern,'', logdata)  # Remove escape sequences
+            
+            z = datetime.now()
+            loghdr ='Log File as of ' + z.strftime("%Y %b %d %H:%M:%S")
+            logday = cmd 
+            logdaycnt = str(cnt) 
+
+            mydict = dict(type = 'log', logday = logday, logdays = str(cnt), \
+                          logdaycnt = logdaycnt, \
+                          loghdr = loghdr, logdata = logdata)
+            data = json.dumps(mydict)
+            print(data)
+            await manager.broadcast(data)
 
 ######################################################
 #
@@ -215,7 +275,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 #   Jinja2 templates
 templates = Jinja2Templates(directory="templates")
 
-#   Build dictionary or parms
+#   Build dictionary of parms
 gwdict={}	        		        #empty dictionary
 gwdictcomment={}
 gwf.build_gwdict(parmfile,gwdict,gwdictcomment)	#build dictionary
@@ -231,6 +291,26 @@ milflag = False         # initialize milflag
 dateflag = False        # initialize dateflag
 global_logday = 0       # initialize global_logday
 
+#   set garage dictionaries
+garage_colors = { \
+        'Open' : 'red', \
+        'Closed': 'green', \
+        'Opening': 'orange', \
+        'Closing': 'orange'
+        }
+
+garage_statuses = { \
+        'Open' : 'is Open since', \
+        'Closed': 'is Closed since', \
+        'Opening': 'is Opening', \
+        'Closing': 'is Closing'
+        }
+garage_images = { \
+        'Open' : '/static/images/GarageRed.gif', \
+        'Closed': '/static/images/GarageGreen.gif', \
+        'Opening': '/static/images/GarageQuestion.gif', \
+        'Closing': '/static/images/GarageQuestion.gif'
+        }
 
 #   Determine door status
 with open('gw_door_state', 'r') as f:
@@ -255,17 +335,15 @@ listenthread.start()
 #   Flask Routes for web server
 #
 ####################################################
-
-
 @app.get("/", response_class=HTMLResponse)
 async def homepage(request: Request):
 #        return templates.TemplateResponse("GarageStatus.html",{"request": request})
 
 #       render Garage Status Form based on garage door position        
         print("at Route / ")
-        global garstatus
-        global doorstate
-        global garcolor
+        # global garstatus
+        # global doorstate
+        # global garcolor
         global invertlog
 
 #       flush stdout, stderr buffers
@@ -275,36 +353,21 @@ async def homepage(request: Request):
 #       reset invertlog flag
         invertlog = False
 
+        garimg = garage_images.get(doorstate, '/static/images/GarageQuestion.gif')
+        garcolor = garage_colors.get(doorstate, 'orange')
+        garstatus = garage_statuses.get(doorstate, 'status unknown')
+
 #       Get status of garage door and set status message
 #       if invalid PIN entered set garstatus
         if doorstate == "Open":
             garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
             if pinstatus == False:
                 garstatus = "Invalid PIN ..."
-            garimg = '/static/images/GarageRed.gif'
-            garcolor = 'red'
 
         elif doorstate == "Closed":
             garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
             if pinstatus == False:
                 garstatus = "Invalid PIN ..."
-            garimg = '/static/images/GarageGreen.gif'
-            garcolor = 'green'
-           
-        elif doorstate == "Opening":
-            garstatus = "Is Opening"
-            garimg = '/static/images/GarageQuestion.gif'
-            garcolor = 'orange'
-
-        elif doorstate == "Closing":
-            garstatus = "Is Closing"
-            garimg = '/static/images/GarageQuestion.gif'
-            garcolor = 'orange'
-        else:
-            garstatus = "Status Unknown"
-            garimg = '/static/images/GarageQuestion.gif'
-            garcolor = 'orange'
-#    return templates.TemplateResponse("mytest.html", {"request": request, "mypgm": "mytest.py"})
 
         return templates.TemplateResponse('GarageStatus.html',\
                                           {"request": request,\
@@ -319,8 +382,6 @@ async def homepage(request: Request):
 @app.post('/Garage')
 async def handle_form(garagecode: str = Form(...)):
         print(f"Received form submission: GarageCode = {garagecode}")
-        
-        
 #       Garage Activation Code Entered
         global garstatus
         global pinstatus
@@ -345,13 +406,13 @@ async def handle_form(garagecode: str = Form(...)):
            
         return RedirectResponse(url='/', status_code=303)
 
-@app.websocket('/launch')
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket('/get_web_cmd')
+async def get_web_cmd(websocket: WebSocket):
      await manager.connect(websocket)
      try:
           while True:
                data = await websocket.receive_text()
-               process_web_page_cmd(data)
+               await process_web_page_cmd(data)
      except WebSocketDisconnect:
         manager.disconnect(websocket)
 

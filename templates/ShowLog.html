@@ -2,6 +2,7 @@
 <!-- <META HTTP-EQUIV="refresh" CONTENT="5"> -->
 
 <link rel="stylesheet" href="/static/css/gwstyles.css">
+<script type="text/javascript" src="/static/js/ShowLog.js"></script>
 <script>
     function refresh(){
         window.location = "/Log";
@@ -11,51 +12,92 @@
         const length = focusfld.value.length;
         focusfld.focus();
         focusfld.setSelectionRange(length, length);
-        
-        // document.getElementById("logday").focus();
     }
+    // Create a URLSearchParams object from the query string
+    const params = new URLSearchParams(window.location.search);
 
+    // Read each parameter
+    const logday = params.get("logday");
+    const logdays = params.get("logdays");
+    const loghdr = params.get("loghdr");
+    const logdata = params.get("logdata");
+    const logdaycnt = params.get("logdaycnt");
+
+    // hide parameters
+    // window.history.replaceState({}, "", "/Log");
+    
+    if (logday == null){
+        console.log('at first time');
+        sendwebmsg('Log=0');
+    } 
 </script>
 
 <style>
     .logform{
         font-size: 24px;
-
     }
+    input{
+        width: 100px;
+    }   
 </style>
 
-
-<body bgcolor="lightcyan" onload="SetFocus('logday')">
-<br >
+<body bgcolor="lightcyan" >
+<div id="main" style="display:block">
+<br>
 <br>
 <center>
-<p class="p2">Log File as of {{fmtdate}}
-<span class="p3"><br>(There are {{fmtnumdays}} days in log file)</span></p>
-<br>
-<form action="/getlog" method="post" id="logform" class="logform">
-    <label for="logday">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
-    <input class="lday" id="logday" name="logday" type="text "pattern="?-[0-9]*" 
-    value="{{fmtlday}}" STYLE="background-color:white;", size="4" >
-</form>
+<p class="p2" id="loghdr">Log File as of mm/dd/yy</p>
+<span class="p3" id="loghdr2"><br>(There are xx days in log file)</span></p>
+
+<div class="logday">
+    <label for="logform">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
+    <input type="number" id="logday" placeholder=""" maxlength="4" pattern="^(\d+|all)" required/>
+</div>
 
 </center>
 <div class="logdata">
-
-<p>
 <pre>
-{{fmtdata}} 
+<div id="logdata"></div>
 </pre>
-</p>
 
 </div>
 <center onclick="refresh()">
 <br><br>
 <!-- <button class="btn" onclick="refresh()">Refresh</button><br><br> -->
 <p class="b"">Click to refresh</p>
-<br><br>
-</center>
-
-<center>
+<br>
 <a href="/" class="b">Return</a><br><br>
 </center>
-</body></html>
+</div>
+</body>
+<script>
+    console.log('create Listener for logday');
+    mylogform = document.getElementById("logday");
+    mylogform.addEventListener('blur', function() {
+        
+        const logday = mylogform.value;
+        const msg = 'Log=' + logday
+		sendwebmsg(msg);
+    });
+
+    const input = document.getElementById("logday");
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+        input.blur(); // removes focus from the input field
+        SetFocus('logday');
+        }
+    });
+
+    if (logday != null){
+        
+        document.getElementById('logday').value = logday;
+        document.getElementById('loghdr').innerHTML = loghdr;
+        document.getElementById('logdata').innerHTML = logdata;
+        document.getElementById('loghdr2').innerHTML = '(There are ' + logdaycnt +' days in log file)';
+        SetFocus('logday');
+        confirm('at second time ... '+logday);
+        // sdocument.getElementById("main").style.display = "block";    // render page
+    }
+</script>
+
+</html>

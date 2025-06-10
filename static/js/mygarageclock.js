@@ -1,4 +1,5 @@
 function updateTime(clockfld) {
+  console.log('at updateTime()');
   function update() {
       const now = new Date();
       element.innerHTML = now.toLocaleTimeString();
