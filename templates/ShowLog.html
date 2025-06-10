@@ -43,32 +43,27 @@
 
 <body bgcolor="lightcyan" >
 <div id="main" style="display:block">
-<br>
-<br>
+<br><br>
 <center>
 <p class="p2" id="loghdr">Log File as of mm/dd/yy</p>
 <span class="p3" id="loghdr2"><br>(There are xx days in log file)</span></p>
-
-<div class="logday">
-    <label for="logform">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
-    <input type="number" id="logday" placeholder=""" maxlength="4" pattern="^(\d+|all)" required/>
-</div>
+    <div class="logday">
+        <label for="logform">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
+        <input type="text" id="logday" placeholder="" maxlength="4" pattern="^(\d*)" required/>
+    </div>
 
 </center>
 <div class="logdata">
-<pre>
-<div id="logdata"></div>
-</pre>
+    <pre>
+        <div id="logdata"></div>
+    </pre>
+</div>
+    <center >
+        <br><br>
+        <a href="/" class="b">Return</a><br><br>
+    </center>
+</div>
 
-</div>
-<center onclick="refresh()">
-<br><br>
-<!-- <button class="btn" onclick="refresh()">Refresh</button><br><br> -->
-<p class="b"">Click to refresh</p>
-<br>
-<a href="/" class="b">Return</a><br><br>
-</center>
-</div>
 </body>
 <script>
     console.log('create Listener for logday');
@@ -83,21 +78,11 @@
     const input = document.getElementById("logday");
     input.addEventListener("keydown", function(event) {
         if (event.key === "Enter") {
-        input.blur(); // removes focus from the input field
-        SetFocus('logday');
+            input.blur(); // removes focus from the input field
+//            SetFocus('logday');
         }
     });
 
-    if (logday != null){
-        
-        document.getElementById('logday').value = logday;
-        document.getElementById('loghdr').innerHTML = loghdr;
-        document.getElementById('logdata').innerHTML = logdata;
-        document.getElementById('loghdr2').innerHTML = '(There are ' + logdaycnt +' days in log file)';
-        SetFocus('logday');
-        confirm('at second time ... '+logday);
-        // sdocument.getElementById("main").style.display = "block";    // render page
-    }
 </script>
 
 </html>

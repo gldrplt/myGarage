@@ -191,7 +191,7 @@ async def process_web_page_cmd(data):
             logday = cmd 
             logdaycnt = str(cnt) 
 
-            mydict = dict(type = 'log', logday = logday, logdays = str(cnt), \
+            mydict = dict(type = 'LogData', logday = logday, logdays = str(cnt), \
                           logdaycnt = logdaycnt, \
                           loghdr = loghdr, logdata = logdata)
             data = json.dumps(mydict)
@@ -379,33 +379,6 @@ async def homepage(request: Request):
                                            "hostname": hostname\
                                            })
                         
-@app.post('/Garage')
-async def handle_form(garagecode: str = Form(...)):
-        print(f"Received form submission: GarageCode = {garagecode}")
-#       Garage Activation Code Entered
-        global garstatus
-        global pinstatus
-        print("at Route /Garage")
-        pin = garagecode
-        if pin == "" :
-           pin = "NULL"
-           garstatus = ''
-           pinstatus = True
-
-        print("PIN = " + pin)
-        if pin == gwdict['gwCode']:  # Code if Password is correct
-           garstatus = ''
-           pinstatus = True
-           print("Sending SIGUSR1 (10) to gw_log.py "+gw_log_pid)
-           gwf.sendsignal(gw_log_pid, "10") 
-        elif pin != "NULL":          # Code if Password is incorrect
-           pinstatus = False         # invalid PIN   
-           print("Sending SIGUSR1 (12) to gw_log.py "+gw_log_pid)           
-           gwf.sendsignal(gw_log_pid, "12")
-           print("Invalid PIN ...",pin)
-           
-        return RedirectResponse(url='/', status_code=303)
-
 @app.websocket('/get_web_cmd')
 async def get_web_cmd(websocket: WebSocket):
      await manager.connect(websocket)
@@ -503,12 +476,6 @@ def logfile(request: Request):
                                            "fmtnumdays": cnt\
                                            })
 
-@app.post('/getlog')
-async def get_logday(logday: str = Form(...)):
-    global global_logday
-    global_logday = logday
-    return RedirectResponse(url='/Log', status_code=303)
-
 @app.get('/ShowParmForm', response_class=HTMLResponse)
 async def ShowParmForm(request: Request):
         print("at /ShowParmForm")    
@@ -582,7 +549,6 @@ async def ProcParmForm(frm_gname: str = Form(...),\
 @app.post('/NoProcParmForm')
 def NoProcParmForm():
      return RedirectResponse(url="/", status_code=303)
-
 
 ##########################################################
 #

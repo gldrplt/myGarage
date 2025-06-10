@@ -1,8 +1,8 @@
 ############################################
 #
-#	myGarage project v6.0
+#	myGarage project v6.1
 #
-#	2025-06-01
+#	2025-06-10
 #
 ############################################
 
@@ -74,3 +74,5 @@ Monitor and control garage door
 
 2025-06-01 use FastAPI and Uvicorn
 
+2025-06-10 Stop using [POST] to get form data
+	use websockets instead 

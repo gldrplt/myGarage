@@ -1,16 +1,19 @@
 // my functions
 function sendwebmsg(msg){
-    console.log('at sendwebmsg ...');
-    
+    console.log('at sendwebmsg msg: ',msg);
+    if (msg === "Log=") {
+        console.log('Logday is null');
+        return};
     const checker = setInterval(() => {
-    console.log("Waiting for websocket ...",socket.readyState);
-    
-    if (socket.readyState === WebSocket.OPEN) {
-        console.log("Websocket open ...");
-        socket.send(msg)
-        clearInterval(checker);  // Stop the loop
-    }
-    }, 100);
+        let cnt = 0;
+        console.log(cnt,"  Waiting for websocket ...",socket.readyState);
+        if (socket.readyState === WebSocket.OPEN) {
+            console.log("Websocket open ...");
+            socket.send(msg)
+            clearInterval(checker);  // Stop the loop
+            }
+            cnt = cnt + 1;
+        }, 50);
 }    
 
 function SetFocus(fld){
@@ -18,19 +21,14 @@ function SetFocus(fld){
     const length = focusfld.value.length;
     focusfld.focus();
     focusfld.setSelectionRange(length, length);
-   
 }
-// 
+
 // establish web-socket
 const socket = new WebSocket('ws://' + location.host + '/get_web_cmd');
 
-// socket.onopen = () => {
-//     console.log("new web socket " + socket);
-//     // if logday is null send log=0 to webserver
-//     if (logday == null){
-//         sendwebmsg('Log=-2');
-//     };
-//     }
+socket.onopen = () => {
+    console.log("new web socket for ShowLog " + socket);
+    }
 
 // listen for message from gw_web.py
 socket.addEventListener('message', ev => {
@@ -39,20 +37,14 @@ socket.addEventListener('message', ev => {
 
     // Parse and process message
     const msg = JSON.parse(jsonmsg);
-
-    if (msg.type === 'log') {
-        const url = `/Log?` +
-                    `logday=${encodeURIComponent(msg.logday)}&` +
-                    `logdays=${encodeURIComponent(msg.logdays)}&` +
-                    `loghdr=${encodeURIComponent(msg.loghdr)}&` +
-                    `logdaycnt=${encodeURIComponent(msg.logdaycnt)}&` +
-                    `logdata=${encodeURIComponent(msg.logdata)}`;
-        
-        // Redirect to /Log with parameters
-        console.log("Redirecting to:", url);
-        window.location.href = url;  // Uncomment to redirect
+    // update webpage elements
+    if (msg.type === 'LogData') {
+            document.getElementById('logday').value = msg.logday;
+            document.getElementById('loghdr').innerHTML = msg.loghdr;
+            document.getElementById('logdata').innerHTML = msg.logdata;
+            document.getElementById('loghdr2').innerHTML = '(There are ' + msg.logdaycnt +' days in log file)';
+            SetFocus('logday');
     }
-
 });
 
 
