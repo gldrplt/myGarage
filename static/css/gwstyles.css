@@ -1,19 +1,32 @@
-body { 
-cursor:default;
-margin-left: 0px;
-margin-right: 0px;
-margin-top: 0px;
-margin-bottom: 0px;
-font-family:Arial, Trebuchet MS, Verdana, Helvetica, sans-serif;
-font-size:24px;
-font-weight:normal;
-
+/* Reset and base layout */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
 }
 
-input {
-	font-size:24px;
+html {
+  background-color: whitesmoke;
+}
+body {
+  cursor: default;
+  overflow: auto;
+  font-family: Arial, Trebuchet MS, Verdana, Helvetica, sans-serif;
+  font-size: 24px;
+  font-weight: normal;
+  border: 1px solid #CCC;
+  border-radius: 1em;
+  /* background-color: #000; optional: set if bgcolor var missing */
+  color: white;
 }
 
+/* Wrapper centering for non-mobile scaling */
+#wrapper {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+/* Button styling */
 .button {
   background-color: grey;
   border: none;
@@ -26,77 +39,68 @@ input {
   cursor: pointer;
 }
 
-.a:link    {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
-.a:visited {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none}
-.a:hover   {font-family:Arial; font-size:24px; font-weight:bold; color:blue; text-decoration: none; cursor:hand}
-.a:active  {font-family:Arial; font-size:24px; font-weight:bold; color:#000000; text-decoration: none; cursor:text}
-.a {
-	color:blue;
-  text-decoration:none;
-  background-color: transparent;
-  font-weight: bold;
-  border-style: none;
-}
-
-.b:link    {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
-.b:visited {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
-.b:hover   {font-family:Arial; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
-.b:active  {font-family:Arial; font-weight:bold; color:#000000; text-decoration: none; cursor:text}
-.b {
+/* Unified link style classes */
+.a, .b, .lday, .link {
+  font-family: Arial;
   font-size: 24px;
-	color:#f30909;
-	text-decoration:none;
-}
-
-.lday:link    {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
-.lday:visited {font-family:Arial; font-weight:bold; color:#f30909; text-decoration: none}
-.lday:hover   {font-family:Arial; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
-.lday:active  {font-family:Arial; font-weight:bold; color:#000000; text-decoration: none; cursor:text}
-.lday {
-  
   font-weight: bold;
-	color:blue;
-	text-decoration:none;
-}
-
-.link:link    {font-family:Arial; font-size:24px; font-weight:bold; color:white; text-decoration: none}
-.link:visited {font-family:Arial; font-size:24px; font-weight:bold; color:white; text-decoration: none}
-.link:hover   {font-family:Arial; font-size:24px; font-weight:bold; color:#FF00FF; text-decoration: none; cursor:hand}
-.link:active  {font-family:Arial; font-size:24px; font-weight:bold; color:white; text-decoration: none; cursor:text}
-.link {
-	color:white;
-  text-decoration:none;
+  text-decoration: none;
   background-color: transparent;
-  font-weight: bold;
   border-style: none;
 }
 
+.a { color: blue; }
+.a:hover { cursor: pointer; }
 
+.b { color: #f30909; }
+.b:hover { color: #FF00FF; cursor: pointer; }
+
+.lday { color: blue; }
+.lday:hover { color: #FF00FF; cursor: pointer; }
+
+.link { color: white; }
+.link:hover { color: #FF00FF; cursor: pointer; }
+
+/* Paragraph styles */
 p {
-text-align:center;
-color:white;
-font-weight:bold;
+  text-align: center;
+  font-weight: bold;
 }
-.p2{
-  font-size:32px;
-  color:black;
 
+.p2 {
+  font-size: 32px;
+  color: black;
 }
-.p3{
-  font-size:24px;;
-  color:black;
-  font-weight:normal;
 
-
-
-
+.p3 {
+  font-size: 24px;
+  color: black;
+  font-weight: normal;
 }
+
+/* Scrollable log output */
 .logdata {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 28px;
-	margin-left:100px;
+  color: black;
+  margin-left: auto;
+  margin-right: auto;
   width: 80%;
   height: 60%;
-  overflow:scroll;
+  overflow: scroll;
 }
 
+/* Responsive improvements */
+@media screen and (max-width: 768px) {
+  body {
+    font-size: 18px;
+  }
+  .button {
+    padding: 10px 20px;
+    font-size: 18px;
+  }
+  .logdata {
+    width: 95%;
+    font-size: 22px;
+  }
+}

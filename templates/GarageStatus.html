@@ -1,81 +1,99 @@
 <!DOCTYPE html>
-<html lang=""en">
+<html lang="en">
 <head>
 <meta name="viewport" content="width=device-width">
-
 <title>Unknown Hostname</title>
+
 <style>
-.menu{
+.menu {
 	background-color: darkgray;
 	margin: auto;
 	width: 400px;
 	padding: 1em;
-	border: 1px solid #CCC;
-	border-radius: 1em;
+	/* border: 1px solid #CCC;
+	border-radius: 1em; */
 	text-align: left;
+}
+
+#wrapper {
+	width: fit-content;
+	margin: 0 auto;
+  border: 2px solid #080808;
+  border-radius: 1em;
 }
 </style>
 
 <link rel="stylesheet" href="/static/css/gwstyles.css">
-<link rel="stylesheet" href="/static/css/floating_input.css"
-
-<!-- get hostname -->
-<!-- update title -->
-<script>
-    const hn = {{hostname|tojson}};
-    document.title = 'myGarage - ' + hn;
-    function load(){
-        updateTime('clock');
-    }
-</script>
+<link rel="stylesheet" href="/static/css/floating_input.css">
 
 <script type="text/javascript" src="/static/js/GarageStatus.js"></script>
 <script type="text/javascript" src="/static/js/mygarageclock.js"></script>
 
+<script>
+    const hn = {{hostname|tojson}};
+    document.title = 'myGarage - ' + hn;
+
+    function load() {
+        updateTime('clock');
+    }
+
+    const [mybrowser, myos, isMobile] = getDeviceAndBrowserInfo();
+    console.log(mybrowser, myos, isMobile);
+</script>
 </head>
 
-<body onload="load()" bgcolor={{garcolor}}>
+<body onload="load()" style="background-color: white">
+  <div id="wrapper" style="background-color: {{ garcolor }}">
+    <center>
+      <br>
+      <p id="name"> {{garname}} </p>
+      <p id="status"> {{garstatus}}</p>
+      <p id="clock">time goes here</p>
 
-<center>
-    <br>
-    <p id="name"> {{garname}} </p>
-    <p id="status"> {{garstatus}}</p>
-    <p id="clock">time goes here</p>
+      <div class="floating-label" id="form">
+        <input type="number" id="garagecode" placeholder=" " size="6" maxlength="6" />
+        <label for="garagecode">Enter PIN: </label>
+      </div>
+
+      <br><img id="img1" src={{garimg}} width="50%">
+      <p> Enter Activation Code </p>
+    </center>
     
-	<div class="floating-label">
-	  <input type="number" id="garagecode" placeholder=" " size="6" maxlength="6"/>
-	  <label for="garagecode">Enter PIN: </label>
-	</div>
-
-    <img id="img1" src={{garimg}} width="70%">
-    <p> Enter Activation Code </p><br>
-</center>
-
-<div>
-    <form class="menu">
-    <p>Menu Options:</p>
-    <br><a href="/Log"                  class="link">Show Log File           </a><br>
-    <br><a href="/ShowParmForm"         class="link">Display/Update config parameters</a><br>
-    <br><a href="/MyClock/Admin"    class="link">Manage MyClock          </a><br><br>
-    </form>
-</div>
-<br><br>
+      <form class="menu">
+        <p>Menu Options:</p>
+        <br><a href="/Log" class="link">Show Log File</a><br>
+        <br><a href="/ShowParmForm" class="link">Display/Update config parameters</a><br>
+        <br><a href="/MyClock/Admin" class="link">Manage MyClock</a><br><br>
+      </form>
+    
+    <br>
+  </div> <!-- end of wrapper -->
 </body>
+
 <script>
-    console.log('create Listener for garagecode');
-	mygaragecode = document.getElementById("garagecode");
-    mygaragecode.addEventListener('blur', function() {
-        const code = mygaragecode.value;
-		sendgaragecode(code);
-        console.log('setting garagecode to blank')
-        document.getElementById("garagecode").value = "";
-    });
-    const input = document.getElementById("garagecode");
-    input.addEventListener("keydown", function(event) {
-        if (event.key === "Enter") {
-        input.blur(); // removes focus from the input field
-        };
-    });
+  if (isMobile == false) {
+    console.log('not mobile');
+
+    const box = document.getElementById("wrapper");
+    box.style.transform = "scale(0.7)";
+    box.style.transformOrigin = "top left";
+  }
+
+  console.log('create Listener for garagecode');
+  const mygaragecode = document.getElementById("garagecode");
+  mygaragecode.addEventListener('blur', function () {
+    const code = mygaragecode.value;
+    sendgaragecode(code);
+    console.log('setting garagecode to blank');
+    mygaragecode.value = "";
+  });
+
+  const input = document.getElementById("garagecode");
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      input.blur(); // removes focus from the input field
+    }
+  });
 </script>
 
 </html>

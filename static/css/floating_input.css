@@ -1,21 +1,27 @@
 	.floating-label {
 	position: relative;
 	margin-bottom: 1.5em;
-	width: 100px;
+	width: 140px;
+	height: 15px;
 	}
 
 	.floating-label input {
+	display: flex;
+	padding-left: 10px;
+	/* justify-content: center;
+	align-items: center; */
+	height: 40px;
 	width: 100%;
-	padding: 6px 6px 6px 6px;
-	font-size: 16px;
+	
+	font-size: 24px;
 	border: 1px solid #ccc;
 	border-radius: 4px;
 	}
 
 	.floating-label label {
-	position: absolute;
+	position: absolute ;
 	left: 8px;
-	top: 6px;
+	top: 14px;
 	color: #b32d00;
 	font-size: 16px;
 	pointer-events: none;
@@ -28,6 +34,6 @@
 	.floating-label input:focus + label,
 	.floating-label input:not(:placeholder-shown) + label {
 	top: -8px;
-	font-size: 12px;
+	font-size: 16px;
 	color: #d90000;
 	}

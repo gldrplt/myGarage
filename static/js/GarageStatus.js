@@ -33,6 +33,32 @@ function SetFocus(fld){
     focusfld.setSelectionRange(length, length);
    
 }
+function getDeviceAndBrowserInfo() {
+    const ua = navigator.userAgent;
+
+    let browser = "Unknown";
+    if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("Edg")) browser = "Edge";
+    else if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari")) browser = "Safari";
+    else if (ua.includes("MSIE") || ua.includes("Trident")) browser = "Internet Explorer";
+
+    let os = "Unknown";
+    if (ua.includes("Win")) os = "Windows";
+    else if (ua.includes("Mac")) os = "MacOS";
+    else if (ua.includes("X11")) os = "UNIX";
+    else if (ua.includes("Linux")) os = "Linux";
+    else if (/Android/.test(ua)) os = "Android";
+    else if (/iPhone|iPad|iPod/.test(ua)) os = "iOS";
+
+    const isMobile = /Mobi|Android/i.test(ua);
+    
+    return [
+        browser,
+        os,
+        isMobile
+    ]
+}
 
 // establish web-socket
 const socket = new WebSocket('ws://' + location.host + '/get_web_cmd');
@@ -51,7 +77,7 @@ socket.addEventListener('message', ev => {
 
         if (msg.type == 'door'){
             // set garimg, garcolor and garstatus
-            document.body.style.backgroundColor = msg.color;
+            document.getElementById("wrapper").style.backgroundColor = msg.color;
             document.getElementById('img1').src = msg.image;
             document.getElementById('status').innerText = msg.status;
         }

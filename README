@@ -1,6 +1,6 @@
 ############################################
 #
-#	myGarage project v6.1
+#	myGarage project v6.2
 #
 #	2025-06-10
 #
@@ -76,3 +76,5 @@ Monitor and control garage door
 
 2025-06-10 Stop using [POST] to get form data
 	use websockets instead 
+
+2025-06-11 Re-size GarageStatus.html page if running on desktop
