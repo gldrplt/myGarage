@@ -25,7 +25,6 @@ function SetFocus(fld){
 
 // establish web-socket
 const socket = new WebSocket('ws://' + location.host + '/get_web_cmd');
-
 socket.onopen = () => {
     console.log("new web socket for ShowLog " + socket);
     }
@@ -47,6 +46,34 @@ socket.addEventListener('message', ev => {
     }
 });
 
+// wait to run code until page loads
+window.addEventListener("load", function () {
+  console.log("GarageStatus.html fully loaded and parsed!");
+    // Your code here
+    // first time, get logdata for today
+    sendwebmsg('Log=0');
+
+    // create listener for logday field
+    console.log('create Listener for logday');
+    mylogform = document.getElementById("logday");
+    mylogform.addEventListener('blur', function() {
+        
+        const logday = mylogform.value;
+        const msg = 'Log=' + logday
+		sendwebmsg(msg);
+    });
+    // if Enter key pressed
+    const input = document.getElementById("logday");
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            input.blur(); // removes focus from the input field
+//            SetFocus('logday');
+        }
+    });
 
 
-    
+
+
+
+
+});

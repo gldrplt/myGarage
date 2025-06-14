@@ -107,13 +107,6 @@ socket.addEventListener("message", (ev) => {
   if (msg.type == "pin") {
     document.getElementById("status").innerText = "Invalid PIN ...";
   }
-  if (msg.type == "log") {
-    debugger;
-    localStorage.setItem("loghdr", msg.loghdr);
-    localStorage.setItem("logday", msg.logday);
-    localStorage.setItem("logdata", msg.logdata);
-    console.log(msg);
-  }
 });
 
 //  monitor resize event

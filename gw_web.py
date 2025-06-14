@@ -180,6 +180,7 @@ async def process_web_page_cmd(data):
                 mydict = dict(type = 'pin')
                 data = json.dumps(mydict)
                 await manager.broadcast(data)
+                pinstatus = True    # reset pinstatus
         
         if cmdType == 'Log':
             print('at get log data for: ',data)

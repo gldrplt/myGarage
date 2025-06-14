@@ -1,85 +1,35 @@
 <html>
-<!-- <META HTTP-EQUIV="refresh" CONTENT="5"> -->
+  <!-- <META HTTP-EQUIV="refresh" CONTENT="5"> -->
+  <link rel="stylesheet" href="/static/css/showlog.css">
+  <script type="text/javascript" src="/static/js/ShowLog.js"></script>
 
-<link rel="stylesheet" href="/static/css/gwstyles.css">
-<script type="text/javascript" src="/static/js/ShowLog.js"></script>
-<script>
-    function refresh(){
-        window.location = "/Log";
-    }
-    function SetFocus(fld){
-        const focusfld = document.getElementById(fld);
-        const length = focusfld.value.length;
-        focusfld.focus();
-        focusfld.setSelectionRange(length, length);
-    }
-    // Create a URLSearchParams object from the query string
-    const params = new URLSearchParams(window.location.search);
 
-    // Read each parameter
-    const logday = params.get("logday");
-    const logdays = params.get("logdays");
-    const loghdr = params.get("loghdr");
-    const logdata = params.get("logdata");
-    const logdaycnt = params.get("logdaycnt");
-
-    if (logday == null){
-        console.log('at first time');
-        sendwebmsg('Log=0');
-    } 
-</script>
-
-<style>
-    .logform{
-        font-size: 24px;
-    }
-    input{
-        width: 100px;
-    }   
-</style>
-
-<body style="background-color: whitesmoke" >
-<div id="main" style="display:block">
-<br><br>
-<center>
-<p class="p2" id="loghdr">Log File as of mm/dd/yy</p>
-<p class="p3" id="loghdr2"><br>(There are xx days in log file)</p>
-    <div class="logday">
-        <label for="logday">Enter Day # (0= today, -1=yesterday, etc.)</label><br>
-        <input type="text" id="logday" placeholder="" maxlength="4" pattern="^(\d*)" required/>
+  <body style="background-color: whitesmoke">
+    <div id="main" style="display: block">
+      <br /><br />
+      <center>
+        <div class="hdr" id="loghdr">Log File as of mm/dd/yy</div>
+        <div class="hdr2" id="loghdr2">
+          <br />(There are xx days in log file)
+        </div>
+        <br />
+        <div class="logday">
+          <label for="logday">Enter Day # (0= today, -1=yesterday, etc.)</label
+          ><br />
+          <input type="text" id="logday" placeholder="" maxlength="4"
+           pattern="^(\d*)" required />
+        </div>
+      </center>
+      <div class="logdata">
+        <pre>
+            <div id="logdata"></div>
+        </pre>
+      </div>
+      <center>
+        <br /><br />
+        <a href="/" class="b">Return</a><br /><br />
+      </center>
     </div>
-
-</center>
-<div class="logdata">
-    <pre>
-        <div id="logdata"></div>
-    </pre>
-</div>
-    <center >
-        <br><br>
-        <a href="/" class="b">Return</a><br><br>
-    </center>
-</div>
-
-</body>
-<script>
-    console.log('create Listener for logday');
-    mylogform = document.getElementById("logday");
-    mylogform.addEventListener('blur', function() {
-        
-        const logday = mylogform.value;
-        const msg = 'Log=' + logday
-		sendwebmsg(msg);
-    });
-
-    const input = document.getElementById("logday");
-    input.addEventListener("keydown", function(event) {
-        if (event.key === "Enter") {
-            input.blur(); // removes focus from the input field
-//            SetFocus('logday');
-        }
-    });
-
-</script>
+  </body>
 
 </html>
