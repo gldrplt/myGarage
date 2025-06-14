@@ -1,7 +1,8 @@
 ############################################################################
 #       gw_web.py
 #
-#       ver 6.0
+#       ver 6.3
+#       dynaamically change size
 #
 #       No longer using gpiozero or RPi.GPIO
 #
@@ -45,6 +46,7 @@ def Set_Door_State(state, loop):
 
 async def Send_Door_Change():
     global octime
+    global pinstatus
     global garstatus, garimg, garcolor
     print()
     print(datetime.now())
@@ -68,8 +70,9 @@ async def Send_Door_Change():
     garcolor = garage_colors.get(doorstate, 'orange')
     garstatus = garage_statuses.get(doorstate, 'status unknown')
     if doorstate in 'OpenClosed': garstatus = garstatus + ' ' + fmttime
-    if not pinstatus:
-         garstatus = "Invalid PIN"
+    # if not pinstatus:
+    #      garstatus = "Invalid PIN"
+    #      pinstatus = True
     mydict = dict( type = 'door',\
                 state = doorstate,
                 status = garstatus,\
@@ -102,6 +105,8 @@ def chkprog(pname):
 
 def listen_to_gw_log(loop):
     global doorstate
+    global octime
+
     print("listen_to_gw_log starting ...")
 
     # use UNIX Sockets to be notified of change in door status
@@ -122,7 +127,10 @@ def listen_to_gw_log(loop):
                     x = conn.recv(1024)
                     if not x:
                         break
-                    doorstate = x.decode()
+
+                    data = json.loads(x.decode())
+                    doorstate = data.get("doorstate")
+                    octime = data.get("octime")
                     print('Door State Changed to: ' + doorstate)
                     if doorstate in ["Closed", "Closing", "Open", "Opening"]:
                         Set_Door_State(doorstate, loop)
@@ -236,8 +244,6 @@ if t_flag == False:     # if running in test mode don't check for gw_log.py
         else:
              gw_log_pid = gw_log_pids[0] 
     print("gw_log pid = "+gw_log_pid)
-    #   send signal to gw_log.py that gw_web has started
-    gwf.sendsignal(gw_log_pid, "60")
 
 #   get signals constants
 mysignal = mySignals()
@@ -284,7 +290,7 @@ gwf.build_gwdict(parmfile,gwdict,gwdictcomment)	#build dictionary
 garimg = ''
 garcolor = ''
 doorstate = 'unknown'
-pinstatus = None        # Flag to show status of PIN code
+pinstatus = True        # Flag to show status of PIN code
 invertlog = False       # sort direction for log file display 
 octime = datetime.now() # set initial value of open/close time
 milflag = False         # initialize milflag
@@ -312,23 +318,27 @@ garage_images = { \
         'Closing': '/static/images/GarageQuestion.gif'
         }
 
-#   Determine door status
-with open('gw_door_state', 'r') as f:
-    doorstate = f.read()
-    print("Garage Door State is ",doorstate)
+# #   Determine door status
+# with open('gw_door_state', 'r') as f:
+#     doorstate = f.read()
+#     print("Garage Door State is ",doorstate)
 
-#   Get last open/close time
-octime = datetime(9999,1,1,0,0,0,0)   # default dto
-with open('gw_octime.txt', "r") as f:
-     x = f.read()
-     x = x.rstrip()    # remove new line
-     octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
+# #   Get last open/close time
+# octime = datetime(9999,1,1,0,0,0,0)   # default dto
+# with open('gw_octime.txt', "r") as f:
+#      x = f.read()
+#      x = x.rstrip()    # remove new line
+#      octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
 
 #   use UNIX sockets to listen to gw_log.py
 mainloop = asyncio.get_event_loop()
 listenthread = Thread(target = listen_to_gw_log, args=(mainloop,))
 listenthread.daemon = True
 listenthread.start()
+
+#   send signal to gw_log.py that gw_web has started
+if t_flag == False:
+    gwf.sendsignal(gw_log_pid, "60")
 
 ####################################################
 #

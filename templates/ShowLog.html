@@ -23,9 +23,6 @@
     const logdata = params.get("logdata");
     const logdaycnt = params.get("logdaycnt");
 
-    // hide parameters
-    // window.history.replaceState({}, "", "/Log");
-    
     if (logday == null){
         console.log('at first time');
         sendwebmsg('Log=0');

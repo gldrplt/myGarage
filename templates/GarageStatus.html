@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=device-width">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Unknown Hostname</title>
 
 <style>
@@ -37,8 +37,6 @@
         updateTime('clock');
     }
 
-    const [mybrowser, myos, isMobile] = getDeviceAndBrowserInfo();
-    console.log(mybrowser, myos, isMobile);
 </script>
 </head>
 
@@ -71,29 +69,6 @@
 </body>
 
 <script>
-  if (isMobile == false) {
-    console.log('not mobile');
-
-    const box = document.getElementById("wrapper");
-    box.style.transform = "scale(0.7)";
-    box.style.transformOrigin = "top left";
-  }
-
-  console.log('create Listener for garagecode');
-  const mygaragecode = document.getElementById("garagecode");
-  mygaragecode.addEventListener('blur', function () {
-    const code = mygaragecode.value;
-    sendgaragecode(code);
-    console.log('setting garagecode to blank');
-    mygaragecode.value = "";
-  });
-
-  const input = document.getElementById("garagecode");
-  input.addEventListener("keydown", function (event) {
-    if (event.key === "Enter") {
-      input.blur(); // removes focus from the input field
-    }
-  });
 </script>
 
 </html>

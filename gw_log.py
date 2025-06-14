@@ -6,7 +6,8 @@
 #	Monitors garage door position
 #
 #     Updated to allow gw_web.py to run on gunicorn web server
-#     Writes to gw_door_state file to notify gw_web.py app about door status
+#     uses websockets to refresh web page when door state changes
+#     use UNIX SOCKET to communicate with gw_web.py when door state changes
 #
 #     Receives signals from gw_web.py app to activate door
 #
@@ -44,6 +45,7 @@ import multiprocessing
 from gpiozero import Button, LED, PWMLED
 from gw_Classes import myError, mySignals, gwColors
 import socket
+import json
 
 def AbortTerm(signum, frame):
       global endmsg
@@ -151,36 +153,46 @@ def watchparmfile(parmfile, gwdict, gwdictcomment, rebootproc):
                   myerr = myError(error, location)
                   ErrorTerm()
 
-def WriteDoorState(doorstate):
-      f = open("gw_door_state", "w")
-      f.write(doorstate)
-      f.close()
+def waitforgw_web():       
+# wait for gw_web.py
+# send doorstate and octime
+      while True:
+            gw_web_event.wait()
+            print("\nat gw_web started")
+            SendDoorState(doorstate, octime_dto)
+            gw_web_event.clear()
+      
+def SendDoorState(doorstate, dto):       # send doorstate and octime to gw_web.py
 
-      if gw_web_pid != "":
+      print("at Sending Door State to gw_web")
+      octime = dto.strftime("%Y-%m-%d %l:%M:%S %p") # 12hr w/am-pm
+
+      if gw_web_pid:                      # if gw_web.py running, send doorstate
+            data = {
+                  "doorstate" : doorstate,
+                  "octime" : octime
+            }
+            msg = json.dumps(data).encode()
             sockpath = "/tmp/gw_socket"
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-#                  s.connect((gwhost, gwlogport))
                   s.connect(sockpath)
-                  s.sendall(doorstate.encode())
-                  print('Sent Doorstate = ' + doorstate + '\n')
+                  s.sendall(msg)
+                  print(octime,'Sent Doorstate = ' + doorstate + '\n')
 
 def DoorOpen():
-         global ini_mtime
-         global laststate
          global doorstate
                   
          openled.on()
          closedled.off()
       
-         z = datetime.now()
-         ts = gwf.fmtts(z)                 # format time stamp
+         octime_dto = datetime.now()
+         ts = gwf.fmtts(octime_dto)                 # format time stamp 24hr
          msg = "\t    " + ts + " -- Door is Open \n\n"
          gwf.writelog(gwLogFile,msg)
          print(msg)
-         gwf.writeoctime(z)   # write open/close time for gw_web
+         
          doorstate = "Open"
-
-         WriteDoorState(doorstate)
+         SendDoorState(doorstate, octime_dto)
 
          # Start Door Open Timer
          try:
@@ -192,55 +204,50 @@ def DoorOpen():
                   ErrorTerm()
 
 def DoorOpening():
-      global laststate
       global doorstate
 
       openled.blink(.1,.1)
       closedled.blink(.1,.1)
 
-      z = datetime.now()
-      ts = gwf.fmtts(z)                 # format time stamp
+      octime_dto = datetime.now()
+      ts = gwf.fmtts(octime_dto)                 # format time stamp 24hr
       msg = "\t    " + ts + " -- Door is Opening \n"
-
       gwf.writelog(gwLogFile,msg)
       print(msg)
+      
       doorstate = "Opening"
-
-      WriteDoorState(doorstate)
+      SendDoorState(doorstate, octime_dto)
 
 def DoorClosed():
-         global ini_mtime
-         global laststate
-         global doorstate
-         
-         closedled.on() 
-         openled.off()
+      global doorstate
+      
+      closedled.on() 
+      openled.off()
 
-         z = datetime.now()
-         ts = gwf.fmtts(z)                 # format time stamp
-         msg = "\t    " + ts + " -- Door is Closed \n\n"
-         gwf.writelog(gwLogFile,msg)
-         print(msg)
-         gwf.writeoctime(z)   # write open/close time for gw_web
-         doorstate = "Closed"
+      octime_dto = datetime.now()
+      ts = gwf.fmtts(octime_dto)                 # format time stamp
+      msg = "\t    " + ts + " -- Door is Closed \n\n"
+      gwf.writelog(gwLogFile,msg)
+      print(msg)
+      gwf.writeoctime(z)   # write open/close time for gw_web
+      doorstate = "Closed"
 
-         WriteDoorState(doorstate)
+      SendDoorState(doorstate, octime_dto)
 
 def DoorClosing():
-      global laststate
       global doorstate
 
       openled.blink(.1,.1)
       closedled.blink(.1,.1)
 
-      z = datetime.now()            # get time
-      ts = gwf.fmtts(z)                 # format time stamp
+      octime_dto = datetime.now()            # get time
+      ts = gwf.fmtts(octime_dto)                 # format time stamp
       msg = "\t    " + ts + " -- Door is Closing \n"
       gwf.writelog(gwLogFile,msg)
       print(msg)
       doorstate = "Closing"
 
-      WriteDoorState(doorstate)            
+      SendDoorState(doorstate, octime_dto)            
 
 def OpenWarning():   # Door has been open longer than gwOpenTime
       
@@ -319,21 +326,7 @@ def gw_web_started(signum, frame):  # gw_web.py has started - get PID
       gw_web_pid = pids
       print("gw_web.py started ...")
       print("gw_web.py PIDs =",pids)
-      
-      # send doorstate to each gw_web.py
-      # try:
-      #       for tgt in pids:
-      #             if opensw.is_pressed:         # Door Open
-      #                   print("sending Door Open")
-      #                   gwf.sendsignal(tgt, mysignals.Open)
-      #             elif closedsw.is_pressed:     # Door Closed
-      #                   print("sending Door Closed")
-      #                   gwf.sendsignal(tgt, mysignals.Closed)
-      #             else:                         # Door unknown - send opening
-      #                   print("sending Door Opening")
-      #                   gwf.sendsignal(tgt, mysignals.Opening)
-      # except:
-      #       pass
+      gw_web_event.set()            # set gw_web_event
       return       
 
 ########################################################################
@@ -467,15 +460,17 @@ if laststate == '':
       closedled.blink(.1,.1)
       openled.blink(.1,.1)
 
-# Write doorstate
-WriteDoorState(doorstate)
-
-z = datetime.now()
-# msg = z.strftime("\t    %H:%M:%S.%f -- " + laststate + '\n')
-ts = gwf.fmtts(z)                 # format time stamp
+octime_dto = datetime.now()
+ts = gwf.fmtts(octime_dto)                 # format time stamp 24hr
 msg = "\t    " + ts + " -- " + laststate + "\n\n"
 gwf.writelog(gwLogFile,msg)
 print(msg)
+
+#       Initialize wait for gw_web.py thread
+gw_web_event = Event()
+waitforgw_webthread = Thread(target = waitforgw_web)
+waitforgw_webthread.daemon = True
+waitforgw_webthread.start()
 
 #     Set signal handler for SIGTINT
 #     User pressed Ctrl-C

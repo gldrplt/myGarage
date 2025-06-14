@@ -9,6 +9,11 @@ html {
   background-color: whitesmoke;
 }
 body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 1em;
+  min-height: 100vh;
   cursor: default;
   overflow: auto;
   font-family: Arial, Trebuchet MS, Verdana, Helvetica, sans-serif;
@@ -24,6 +29,9 @@ body {
 #wrapper {
   width: fit-content;
   margin: 0 auto;
+  max-width: 100%;
+  padding: 1em;
+  box-sizing: border-box;
 }
 
 /* Button styling */
