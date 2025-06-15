@@ -238,6 +238,7 @@ if t_flag == False:     # if running in test mode don't check for gw_log.py
     if len(gw_log_pids) == 0:
         print('Error - gw_log.py is not running...')
         print('gw_web exiting ...')
+        os.kill(os.getppid(), 15)   # send SIGTERM to gunicorn master process
         exit()
     else:
         if vscode:
@@ -376,7 +377,7 @@ async def homepage(request: Request):
                 garstatus = "Invalid PIN ..."
 
         elif doorstate == "Closed":
-            garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
+            garstatus = "is Closed since " + octime.strftime("%l:%M:%S %P")
             if pinstatus == False:
                 garstatus = "Invalid PIN ..."
 
@@ -504,7 +505,7 @@ async def ShowParmForm(request: Request):
         l = gwdict['sms_url2']
         m = gwdict['pwm_duty']
         
-        return templates.TemplateResponse('parmform.html', \
+        return templates.TemplateResponse('ParmForm.html', \
                                           {"request": request,\
                                            "p_gname" : a, \
                                            "p_code" : b, \

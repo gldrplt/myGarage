@@ -1,4 +1,7 @@
 /* Reset and base layout */
+.hidden{
+  display: none;
+}
 html, body {
   margin: 0;
   padding: 0;
@@ -8,6 +11,17 @@ html, body {
 html {
   background-color: whitesmoke;
 }
+
+#wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+	width: fit-content;
+	margin: 0 auto;
+  border: 2px solid #080808;
+  border-radius: 1em;
+}
+
 body {
   display: flex;
   justify-content: center;
@@ -73,6 +87,16 @@ body {
 p {
   text-align: center;
   font-weight: bold;
+}
+/* style for menu of links */
+.menu {
+	background-color: darkgray;
+	margin: auto;
+	width: 400px;
+	padding: 1em;
+	/* border: 1px solid #CCC;
+	border-radius: 1em; */
+	text-align: left;
 }
 
 /* Responsive improvements */

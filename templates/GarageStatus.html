@@ -1,74 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Unknown Hostname</title>
+<head id="head" >
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unknown Hostname</title>
+  <link rel="icon" href="/static/color-garage.png" type="image/png">
+  <link rel="stylesheet" href="/static/css/GarageStatus.css">
+  <link rel="stylesheet" href="/static/css/floating_input.css">
 
-<style>
-.menu {
-	background-color: darkgray;
-	margin: auto;
-	width: 400px;
-	padding: 1em;
-	/* border: 1px solid #CCC;
-	border-radius: 1em; */
-	text-align: left;
-}
-
-#wrapper {
-	width: fit-content;
-	margin: 0 auto;
-  border: 2px solid #080808;
-  border-radius: 1em;
-}
-</style>
-
-<link rel="stylesheet" href="/static/css/gwstyles.css">
-<link rel="stylesheet" href="/static/css/floating_input.css">
-
-<script type="text/javascript" src="/static/js/GarageStatus.js"></script>
-<script type="text/javascript" src="/static/js/mygarageclock.js"></script>
-
-<script>
-    const hn = {{hostname|tojson}};
-    document.title = 'myGarage - ' + hn;
-
-    function load() {
-        updateTime('clock');
-    }
-
-</script>
+  <script type="text/javascript" src="/static/js/GarageStatus.js"></script>
+  <script type="text/javascript" src="/static/js/mygarageclock.js"></script>
+  <script>
+      const hn = {{hostname|tojson }};
+      document.title = 'myGarage - ' + hn;
+  </script>
 </head>
 
-<body onload="load()" style="background-color: white">
-  <div id="wrapper" style="background-color: {{ garcolor }}">
-    <center>
+<body id="body" style="background-color: white" >
+  <div id="bigwrapper" >
+  <div id="wrapper" style="background-color: {{garcolor}}">
+    
       <br>
-      <p id="name"> {{garname}} </p>
-      <p id="status"> {{garstatus}}</p>
-      <p id="clock">time goes here</p>
+      <div id="name"> {{garname}} </div><br>
+      <div id="status"> {{garstatus}}</div><br>
+      <div id="clock">time goes here</div><br>
 
       <div class="floating-label" id="form">
-        <input type="number" id="garagecode" placeholder=" " size="6" maxlength="6" />
+        <input type="text" id="garagecode" placeholder=" " pattern="\d{6}" maxlength="6" />
         <label for="garagecode">Enter PIN: </label>
       </div>
 
       <br><img id="img1" src={{garimg}} width="50%">
       <p> Enter Activation Code </p>
-    </center>
-    
-      <form class="menu">
+
+      <div class="menu">
         <p>Menu Options:</p>
         <br><a href="/Log" class="link">Show Log File</a><br>
         <br><a href="/ShowParmForm" class="link">Display/Update config parameters</a><br>
         <br><a href="/MyClock/Admin" class="link">Manage MyClock</a><br><br>
-      </form>
+      </div>
     
     <br>
   </div> <!-- end of wrapper -->
+  </div> <!-- end of big-->
 </body>
-
-<script>
-</script>
 
 </html>
