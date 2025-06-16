@@ -55,7 +55,6 @@ def AbortTerm(signum, frame):
       stop_pgm_event.set()
 
 def SystemdTerm(signum, frame):
-#      breakpoint()
       global endmsg
       print("\rat SystemdTerm")
       endmsg = "Systemd terminated program sent SIGTERM ..."
@@ -173,9 +172,9 @@ def SendDoorState(doorstate, dto):       # send doorstate and octime to gw_web.p
                   "octime" : octime
             }
             msg = json.dumps(data).encode()
-            sockpath = "/tmp/gw_socket"
+            socket_path = "/tmp/gw_socket"
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                  s.connect(sockpath)
+                  s.connect(socket_path)
                   s.sendall(msg)
                   print(octime,'Sent Doorstate = ' + doorstate + '\n')
 
@@ -442,7 +441,6 @@ if gwOpenWarning or gwCloseDoor:
       timer = Timer(gwOpenTime, OpenWarning)
       
 #        Determine initial status of door
-
 doorstate = 'Unknown'
 laststate = ''
 if closedsw.is_pressed:

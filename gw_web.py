@@ -60,12 +60,6 @@ async def Send_Door_Change():
     octime = datetime.now()
     fmttime = octime.strftime("%l:%M:%S %P")
 
-    # timecmd = 'time=' + fmttime
-    # doorcmd = 'door=' + doorstate
-
-    # await manager.broadcast(timecmd)
-    # await manager.broadcast(doorcmd)
-
     garimg = garage_images.get(doorstate, '/static/images/GarageQuestion.gif')
     garcolor = garage_colors.get(doorstate, 'orange')
     garstatus = garage_statuses.get(doorstate, 'status unknown')
@@ -106,23 +100,20 @@ def chkprog(pname):
 def listen_to_gw_log(loop):
     global doorstate
     global octime
-
     print("listen_to_gw_log starting ...")
 
     # use UNIX Sockets to be notified of change in door status
-    HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-    PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
-    sockpath = "/tmp/gw_socket"
-    if os.path.exists(sockpath):
-        os.remove(sockpath)
+    socket_pathath = "/tmp/gw_socket"
+    if os.path.exists(socket_pathath):
+        os.remove(socket_pathath)
 
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-        s.bind(sockpath) 
+        s.bind(socket_pathath) 
         s.listen()
         while True:
             conn, addr = s.accept()
             with conn:
-                print('Socket created at' + sockpath + '\n' )
+                print('Socket created at' + socket_pathath + '\n' )
                 while True:
                     x = conn.recv(1024)
                     if not x:
@@ -177,7 +168,7 @@ async def process_web_page_cmd(data):
                 gwf.sendsignal(gw_log_pid, "12")
                 print("Invalid PIN ...",pin)
 
-                mydict = dict(type = 'pin')
+                mydict = dict(type = 'badpin')
                 data = json.dumps(mydict)
                 await manager.broadcast(data)
                 pinstatus = True    # reset pinstatus
@@ -320,18 +311,6 @@ garage_images = { \
         'Closing': '/static/images/GarageQuestion.gif'
         }
 
-# #   Determine door status
-# with open('gw_door_state', 'r') as f:
-#     doorstate = f.read()
-#     print("Garage Door State is ",doorstate)
-
-# #   Get last open/close time
-# octime = datetime(9999,1,1,0,0,0,0)   # default dto
-# with open('gw_octime.txt', "r") as f:
-#      x = f.read()
-#      x = x.rstrip()    # remove new line
-#      octime = datetime.strptime(x, '%Y-%m-%d %I:%M:%S %p')
-
 #   use UNIX sockets to listen to gw_log.py
 mainloop = asyncio.get_event_loop()
 listenthread = Thread(target = listen_to_gw_log, args=(mainloop,))
@@ -353,9 +332,6 @@ async def homepage(request: Request):
 
 #       render Garage Status Form based on garage door position        
         print("at Route / ")
-        # global garstatus
-        # global doorstate
-        # global garcolor
         global invertlog
 
 #       flush stdout, stderr buffers
@@ -576,7 +552,3 @@ print(msg)
 
 if __name__ == '__main__':
         uvicorn.run(app, host='0.0.0.0', port=int(gwdict['gwPort']))
-
-now = datetime.now()
-msg = now.strftime("\n%H:%M:%S gw_web.py ended ...\n")
-print(msg)

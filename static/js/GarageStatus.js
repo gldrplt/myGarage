@@ -137,7 +137,8 @@ socket.addEventListener("message", (ev) => {
     document.getElementById("img1").src = msg.image;
     document.getElementById("status").innerText = msg.status;
   }
-  if (msg.type == "pin") {
+  if (msg.type == "badpin") {
+    // set status to Invalid Pin
     document.getElementById("status").innerText = "Invalid PIN ...";
   }
 });
