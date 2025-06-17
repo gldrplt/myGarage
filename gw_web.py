@@ -103,17 +103,17 @@ def listen_to_gw_log(loop):
     print("listen_to_gw_log starting ...")
 
     # use UNIX Sockets to be notified of change in door status
-    socket_pathath = "/tmp/gw_socket"
-    if os.path.exists(socket_pathath):
-        os.remove(socket_pathath)
+    socket_path = "/tmp/gw_socket"
+    if os.path.exists(socket_path):
+        os.remove(socket_path)
 
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-        s.bind(socket_pathath) 
+        s.bind(socket_path) 
         s.listen()
         while True:
             conn, addr = s.accept()
             with conn:
-                print('Socket created at' + socket_pathath + '\n' )
+                print('Socket created at' + socket_path + '\n' )
                 while True:
                     x = conn.recv(1024)
                     if not x:
