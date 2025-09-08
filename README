@@ -1,8 +1,8 @@
 ############################################
 #
-#	myGarage project v6.3
+#	myGarage project v6.4
 #
-#	2025-06-14
+#	2025-09-08
 #
 ############################################
 
@@ -78,3 +78,9 @@ Monitor and control garage door
 	use websockets instead 
 
 2025-06-11 Re-size GarageStatus.html page if running on desktop
+
+2025-09-08 Use threading.Timer to wait for reboot time
+			creates timer that can be cancelled and restarted if
+			gwparms.ini changes gwfBootTime
+			Eliminates need for subprocess thread to use pause to wait
+

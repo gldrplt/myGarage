@@ -14,16 +14,17 @@ from subprocess import run
 import shutil
 import psutil
 from gw_Classes import myError, gwColors
+from threading import Timer, Event, Thread
 
 #from twilio.rest import Client
 
 def fmtts(time):  # format time stamp for log entry
-      z = time
-      hms = z.strftime("%H:%M:%S")  # hours:min:sec
-      ms = z.strftime(".%f")        # microseconds 6 digits
-      ms = ms[0:3]                  # 2 digits
-      ts = hms + ms                 # formatted time stamp
-      return ts
+    z = time
+    hms = z.strftime("%H:%M:%S")  # hours:min:sec
+    ms = z.strftime(".%f")        # microseconds 6 digits
+    ms = ms[0:3]                  # 2 digits
+    ts = hms + ms                 # formatted time stamp
+    return ts
 
 def get_path():             # get directory where program started from
     cwd = os.getcwd()       # current working directory
@@ -38,22 +39,22 @@ def get_path():             # get directory where program started from
     return rpath
 
 def build_gwdict(fname, gwdict, gwdictcomment):
-    
+
     gwdict.clear()
     gwdictcomment.clear()
 
     with open(fname, "r") as f:
         z = f.read()
-    
+
     x = z.split('\n')       #break into individual lines
     for a in x:
         b = a.split('#')    #check if comment only line
         if b[0] != '':
-    # get comment if any       
+            # get comment if any
             c = ''
             if len(b) > 1:
                 c = b[1].lstrip()   #remove leading spaces
-                c = '\t# ' + c    
+                c = '\t# ' + c
     # remove comment
             y = b[0]
             y = y.split('#')    #remove comment
@@ -63,7 +64,7 @@ def build_gwdict(fname, gwdict, gwdictcomment):
             z = y[1].lstrip()   #remove leading spaces from val
             val = y[1].rstrip() #remove trailing spaces from val
 
-    # create dictionary entries
+            # create dictionary entries
             gwdict[key] = val       #save value for key
             gwdictcomment[key] = c  #save comment for key
 
@@ -103,27 +104,40 @@ def writeoctime(dto):
     f.write(msg)
     f.close()
 
-def calc_reboot_dto(boottime):
-#   calculate reboot time
-#   build date time object for reboot time
+
+def calc_reboot_dto(hhmm: str) -> datetime:
+    """Return a datetime for today at hhmm.
+    If that time has already passed, return the same time tomorrow."""
+    hh = int(hhmm[0:2])
+    min = int(hhmm[2:5])
+    now = datetime.now()
+    target = now.replace(hour=hh, minute=min, second=0, microsecond=0)
+    if target < now:
+        target += timedelta(days=1)
+    return target
+
+def reboot_at(hhmm, function, *args, **kwargs):
+    """Return a datetime dto for today at hhmm.
+    If that time has already passed, return the same time tomorrow."""
+    hh = int(hhmm[0:2])
+    min = int(hhmm[2:5])
+    now = datetime.now()
+    target = now.replace(hour=hh, minute=min, second=0, microsecond=0)
+    if target < now:
+        target += timedelta(days=1)
+    delay = (target - now).total_seconds()
+    if delay < 0:
+        print("⚠️ Target time is in the past!")
+        return None
+    timer = Timer(delay, function, args=args, kwargs=kwargs)
+    timer.start()
+    return timer
+
+def rebootnow(logfile, gwColors):     # reboot system
     
-    curtime = datetime.now()
-    today = datetime.strftime(curtime, '%Y %m %d')  # get year month day
-    today = today + boottime                        # append HHMM
-    dto = datetime.strptime(today, '%Y %m %d%H%M')
-    if dto < curtime:
-        dto = dto + timedelta(days=1)      # if dto < curtime add one day
-
-    return dto
-
-def waitforreboot(reboot_dto,fname,gwColors):     # threaded callback function to pause until gwBootTime
     try:
-
-    #   pause until boottime
-        pause.until(reboot_dto)
-
-    #   test if check_throttled command exists
-    #   Run check_throttled
+        #   test if check_throttled command exists
+        #   Run check_throttled
         curtime = datetime.now()
         cmd = 'check_throttled'
         if shutil.which(cmd):
@@ -135,35 +149,35 @@ def waitforreboot(reboot_dto,fname,gwColors):     # threaded callback function t
                 msg = curtime.strftime("\n\t    " + ts + "    -- No system throttling since last reboot... \n")
                 mcolor = gwColors.bgreen # type: ignore
             else:
-                msg = curtime.strftime("\n\t    " + ts + "    -- Warning - system throttling occurred since last reboot... \n")    
+                msg = curtime.strftime("\n\t    " + ts + "    -- Warning - system throttling occurred since last reboot... \n")
                 mcolor = gwColors.bred # type: ignore
-            writelog(fname,msg, mcolor)
+            writelog(logfile,msg, mcolor)
         else:
             msg = "\n--- Error --- check_throttled function not found"
-            writelog(fname,msg, gwColors.bred)             # type: ignore
+            writelog(logfile,msg, gwColors.bred)             # type: ignore
             p = os.getenv('PATH')
             p = "\nPath = " + p
-            writelog(fname,p)
+            writelog(logfile,p)
 
-    #   Reboot system        
+    #   Reboot system
         z = datetime.now()
         ts = fmtts(z)
 
         msg = curtime.strftime("\n\t    " + ts + "    -- Raspberry Pi Re-Booting... \n\n")
-        writelog(fname,msg, gwColors.byellow) # type: ignore
+        writelog(logfile,msg, gwColors.byellow) # type: ignore
         print(msg)
-        time.sleep(60)       # wait 60 seconds         
+        time.sleep(60)       # wait 60 seconds
         os.system("sudo reboot now")
         return True
     except Exception as error:
         myerr = myError(error, 'waitforreboot')
         return
-    
+
 def trimlog(logdays,logfile):
     try:
         with open(logfile,'r') as f:
             z = f.read()        # get current log file data
-        
+
         a = z.split('Started')
         i = len(a)
         if i <= logdays:     # check if log file exceeds gwLogDays
@@ -172,18 +186,18 @@ def trimlog(logdays,logfile):
         f = open(logfile,'w')
         f.close()
         return
-    
+
     newlogname = logfile + '.old'
-    os.renames(logfile,newlogname)	#rename logfile to gw_log.txt.old
-    
+    os.renames(logfile,newlogname) #rename logfile to gw_log.txt.old
+
     outlog = ''
-    for j in range(i - logdays, i-1):  
+    for j in range(i - logdays, i-1):
         b=a[j]              #   b contains first part of log day
         k=b.rindex('\n')
         c=b[k+1:len(b)]     #   c is first part of log day
 
         e=''
-        if j <= i:        
+        if j <= i:
             d=a[j+1]        #   d contains second part of log day
             l = d.rindex('\n') + 1
             e = d[0:l]      #   e is second part of log day
@@ -191,8 +205,8 @@ def trimlog(logdays,logfile):
         outlog = outlog + logday  #   add log day to trimlog
 
     #   write trimmed logfile
-    f = open(logfile,'w')	
-    f.write(outlog)   
+    f = open(logfile,'w')
+    f.write(outlog)
     f.close()
 
 
@@ -206,20 +220,20 @@ def get_tgt_pids(tgt):   # return array of pids for tgt
         except:
             pass
         procid = proc.pid
-#        procexe = proc.exe()
+        #        procexe = proc.exe()
         procname = proc.name()
-        
+
         if len(proccmd) > 0:
             for x in proccmd:
                 if tgt in x:
-#                    print(proc.pid, '\n',proc.name(),'\n', proc.cmdline(),'\n', proexe,'\n')
+                    #                    print(proc.pid, '\n',proc.name(),'\n', proc.cmdline(),'\n', proexe,'\n')
                     if not "gunicorn: master" in x:
                         tgt_pids.append(str(proc.pid))
 #                    print("proccmd = ",proccmd,type(proccmd))
                     else:
                         pass
                     cmdline=str(proccmd)
-#                    print("cmdline = ",cmdline,type(cmdline))
+                    #                    print("cmdline = ",cmdline,type(cmdline))
                     i = cmdline.find('vscode')
                     print("i = ",i)
                     if i > 0:
@@ -236,7 +250,7 @@ def get_tgt_pids(tgt):   # return array of pids for tgt
 def sendsignal(tgt, signal):    # send signal to tgt pids
     if isinstance(tgt, str):    # convert string to list
         tgt = tgt.split()
-    
+
     try:
         for x in tgt:           # loop through list of pids
             print("Sending signal "+signal+" to pid " + x)
@@ -275,7 +289,7 @@ def getlogdays(logfile):
 def colorstring(text, color):
     #   Split on <new line>
     #   Wrap each segment with <color><segment><reset>
-    reset = '\033[0m'	     # escape sequence to RESET text
+    reset = '\033[0m'      # escape sequence to RESET text
     c = text
     a = text.split('\n')     # split on new line
 
@@ -286,14 +300,14 @@ def colorstring(text, color):
                 c = c + color + x + reset   # build output string
             else:
                 c = c + '\n' # add new line
-    return c                 # return colorized string    
+    return c                 # return colorized string
 
 # def send_sms(gwdict, gwmsg):
 #     account_sid = gwdict['sms_sid']
 #     auth_token = gwdict['sms_token']
 
 #     client = Client(account_sid, auth_token)
-    
+
 #     sms_from = gwdict['sms_from']
 #     sms_to = gwdict['sms_phone1']
 #     msg = gwmsg
@@ -311,4 +325,3 @@ def colorstring(text, color):
 #             from_=sms_from,
 #             body=msg
 #         )
-
