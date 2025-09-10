@@ -39,13 +39,40 @@ import signal
 import time
 from datetime import datetime
 import gw_Functions as gwf
+import threading
 from threading import Timer, Event, Thread
 from watchfiles import watch
 import multiprocessing
-from gpiozero import Button, LED, PWMLED
+from gpiozero import Button, LED, PWMLED, Device
+from contextlib import contextmanager
 from gw_Classes import myError, mySignals, gwColors
 import socket
 import json
+
+#   context manager to perform gpio cleanup
+@contextmanager
+def gpio_devices():
+    try:
+        yield
+    finally:
+        for dev in devices:
+            try:
+                print("Closing",dev)
+                dev.close()
+            except:
+                print("Error closing device",dev)
+        for t in threading.enumerate():
+            print(t)
+            if t is threading.main_thread():
+                continue
+            try:
+                print("Closing",t)
+#                t.daemon = True
+                
+            except:
+                print("Error closing thread",t)
+
+
 
 def AbortTerm(signum, frame):
     global endmsg
@@ -343,8 +370,34 @@ if os.getenv('running_under_systemd') == 'true':
     sys.stderr = open('gw_web.stderr', 'w')
 
 #     get signals constants
-mysignals = mySignals()
+# mysignals = mySignals()
+
+#   initialize gw_web_pid
 gw_web_pid = ""
+
+#     Set signal handler for SIGTINT
+#     User pressed Ctrl-C
+signal.signal(signal.SIGINT, UserTerm)
+
+#     Set signal handler for SIGTERM
+#     signal sent by systemd to terminate
+signal.signal(signal.SIGTERM, SystemdTerm)
+
+#     set signal handler for SIGUSR1 (10)
+#     gw_web app wants to close door
+signal.signal(signal.SIGUSR1, WebGoodPin)
+
+#     set signal handler for SIGUSR2 (12)
+#     gw_web app was sent Bad PIN code
+signal.signal(signal.SIGUSR2, WebBadPin)
+
+#     set signal handler for SIGABRT (6)
+#     signal for testing purposes
+signal.signal(signal.SIGABRT, AbortTerm)
+
+#     set signal handler for signal (60)
+#     signal for gw_web.py has started
+signal.signal(60, gw_web_started)
 
 #     get color constants
 gwColors = gwColors()
@@ -415,95 +468,85 @@ blinkledthread.start()
 #       Trim Log File if necessary
 gwf.trimlog(gwLogDays,gwLogFile)
 
-#     initialize relay to close door
-pressdoorbtn = LED('BOARD7', active_high=True, initial_value=True)
+#   Use context manager to properly clean up GPIO pins
+with gpio_devices():
+    #     initialize relay to close door
+    pressdoorbtn = LED('BOARD7', active_high=True, initial_value=True)
 
-#     initialize motion detected switch
-motiondetectedbtn = Button('BOARD13')
-motiondetectedbtn.when_released = MotionDetected
+    #     initialize motion detected switch
+    motiondetectedbtn = Button('BOARD13')
+    motiondetectedbtn.when_released = MotionDetected
 
-#     initialize motion led
-brightness = float(gwdict['pwm_duty'])
-motionled = PWMLED('BOARD15', active_high=True, initial_value=brightness)
-motionled.off()
+    #     initialize motion led
+    brightness = float(gwdict['pwm_duty'])
+    motionled = PWMLED('BOARD15', active_high=True, initial_value=brightness)
+    motionled.off()
 
-#     Initialize open and closed switches(buttons)
-opensw = Button('BOARD18', pull_up=True, active_state=None, bounce_time=.5, hold_time=.25)
-opensw.when_pressed = DoorOpen
-opensw.when_released = DoorClosing
-openled = LED('BOARD12')
+    #     Initialize open and closed switches(buttons)
+    opensw = Button('BOARD18', pull_up=True, active_state=None, bounce_time=.5, hold_time=.25)
+    opensw.when_pressed = DoorOpen
+    opensw.when_released = DoorClosing
+    openled = LED('BOARD12')
 
-closedsw = Button('BOARD16', pull_up=True, active_state=None, bounce_time=.5, hold_time=.25)
-closedsw.when_pressed = DoorClosed
-closedsw.when_released = DoorOpening
-closedled = LED('BOARD11')
+    closedsw = Button('BOARD16', pull_up=True, active_state=None, bounce_time=.5, hold_time=.25)
+    closedsw.when_pressed = DoorClosed
+    closedsw.when_released = DoorOpening
+    closedled = LED('BOARD11')
 
-#        Initialize door open timer
-if gwOpenWarning or gwCloseDoor:
-    timer = Timer(gwOpenTime, OpenWarning)
+    #        Create list of gpio devices
+    devices = [
+        pressdoorbtn,
+        motiondetectedbtn,
+        motionled,
+        opensw,
+        openled,
+        closedsw,
+        closedled
+    ]
 
-#        Determine initial status of door
-doorstate = 'Unknown'
-laststate = ''
-if closedsw.is_pressed:
-    doorstate = 'Closed'
-    laststate = 'Door is Closed'
-    closedled.on()
+    #        Initialize door open timer
+    if gwOpenWarning or gwCloseDoor:
+        timer = Timer(gwOpenTime, OpenWarning)
 
-if opensw.is_pressed:
-    doorstate = 'Open'
-    laststate = 'Door is Open'
-    openled.on()
+    #        Determine initial status of door
+    doorstate = 'Unknown'
+    laststate = ''
+    if closedsw.is_pressed:
+        doorstate = 'Closed'
+        laststate = 'Door is Closed'
+        closedled.on()
 
-if laststate == '':
-    laststate = 'Door State is Unknown'
-    closedled.blink(.1,.1)
-    openled.blink(.1,.1)
+    if opensw.is_pressed:
+        doorstate = 'Open'
+        laststate = 'Door is Open'
+        openled.on()
 
-octime_dto = datetime.now()
-ts = gwf.fmtts(octime_dto)                 # format time stamp 24hr
-msg = "\t    " + ts + " -- " + laststate + "\n\n"
-gwf.writelog(gwLogFile,msg)
-print(msg)
+    if laststate == '':
+        laststate = 'Door State is Unknown'
+        closedled.blink(.1,.1)
+        openled.blink(.1,.1)
 
-#       Initialize wait for gw_web.py thread
-gw_web_event = Event()
-waitforgw_webthread = Thread(target = waitforgw_web)
-waitforgw_webthread.daemon = True
-waitforgw_webthread.start()
+    octime_dto = datetime.now()
+    ts = gwf.fmtts(octime_dto)                 # format time stamp 24hr
+    msg = "\t    " + ts + " -- " + laststate + "\n\n"
+    gwf.writelog(gwLogFile,msg)
+    print(msg)
 
-#     Set signal handler for SIGTINT
-#     User pressed Ctrl-C
-signal.signal(signal.SIGINT, UserTerm)
+    #       Initialize wait for gw_web.py thread
+    gw_web_event = Event()
+    waitforgw_webthread = Thread(target = waitforgw_web)
+    waitforgw_webthread.daemon = True
+    waitforgw_webthread.start()
 
-#     Set signal handler for SIGTERM
-#     signal sent by systemd to terminate
-signal.signal(signal.SIGTERM, SystemdTerm)
 
-#     set signal handler for SIGUSR1 (10)
-#     gw_web app wants to close door
-signal.signal(signal.SIGUSR1, WebGoodPin)
-
-#     set signal handler for SIGUSR2 (12)
-#     gw_web app was sent Bad PIN code
-signal.signal(signal.SIGUSR2, WebBadPin)
-
-#     set signal handler for SIGABRT (6)
-#     signal for testing purposes
-signal.signal(signal.SIGABRT, AbortTerm)
-
-#     set signal handler for signal (60)
-#     signal for gw_web.py has started
-signal.signal(60, gw_web_started)
-
-#        Blocking Wait for event
-try:
-    print("gw_log.py waiting for change in door status :\n")
-    stop_pgm_event.wait()
-except Exception as error:
-    location = "Main Program (gw_log.py)at Blocking Wait ..."
-    myerr = myError(error, location)
-    ErrorTerm()
+    #        Blocking Wait for event
+    try:
+        print("gw_log.py waiting for change in door status :\n")
+        stop_pgm_event.wait()
+    except Exception as error:
+        location = "Main Program (gw_log.py)at Blocking Wait ..."
+        myerr = myError(error, location)
+        ErrorTerm()
 
 #     Exit program
 
