@@ -55,24 +55,12 @@ def gpio_devices():
     try:
         yield
     finally:
-        for dev in devices:
+        for dev in devices:     # close each gpio device
             try:
                 print("Closing",dev)
                 dev.close()
             except:
                 print("Error closing device",dev)
-        for t in threading.enumerate():
-            print(t)
-            if t is threading.main_thread():
-                continue
-            try:
-                print("Closing",t)
-#                t.daemon = True
-                
-            except:
-                print("Error closing thread",t)
-
-
 
 def AbortTerm(signum, frame):
     global endmsg
@@ -537,7 +525,6 @@ with gpio_devices():
     waitforgw_webthread = Thread(target = waitforgw_web)
     waitforgw_webthread.daemon = True
     waitforgw_webthread.start()
-
 
     #        Blocking Wait for event
     try:

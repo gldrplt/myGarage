@@ -130,7 +130,9 @@ def reboot_at(hhmm, function, *args, **kwargs):
         print("⚠️ Target time is in the past!")
         return None
     timer = Timer(delay, function, args=args, kwargs=kwargs)
-    timer.start()
+    timer.daemon = True     # mark as daemon to allow program close
+                            # before timer finishes
+    timer.start()           # start timer
     return timer
 
 def rebootnow(logfile, gwColors):     # reboot system
