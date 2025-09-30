@@ -57,7 +57,7 @@ def gpio_devices():
     finally:
         for dev in devices:     # close each gpio device
             try:
-                print("Closing",dev)
+#                print("Closing",dev)
                 dev.close()
             except:
                 print("Error closing device",dev)
@@ -552,6 +552,9 @@ msg = "\n\t    " + ts + " -- " + endmsg + "\n" + \
       "\n\t    " + ts + " -- Garage Web Log Program Shutdown ---\n\n"
 gwf.writelog(gwLogFile,msg, gwColors.byellow)
 print('\r'+msg)
+
+#   Cancel reboot_timer to speed up program shutdown
+reboot_timer.cancel()
 
 #########################################################
 #

@@ -2,7 +2,7 @@
 #
 #	myGarage project v6.5
 #
-#	2025-09-10
+#	2025-09-30
 #
 ############################################
 
@@ -86,3 +86,6 @@ Monitor and control garage door
 
 2025-09-10 In gw_log.py, set reboot timer daemon=True to allow program
 			to exit before timer finishes
+
+2025-09-30 Issue reboot_timer.cancel() at end of program to speed up
+			program shutdown
