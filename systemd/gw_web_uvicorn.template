@@ -32,7 +32,9 @@ Environment="PYTHONUNBUFFERED=1"
 # ExecStart=/home/paul/.virtualenvs/myGarage/bin/uvicorn \
 
 # ExecStart for virtual env AND uvicorn web server
-ExecStart=uvicorn \
+# NOTE: Environment=PATH directive doesn't work on pi-zero
+
+ExecStart=/home/paul/.virtualenvs/myGarage/bin/uvicorn \
 	--host 0.0.0.0 \
 	--port 13233 \
 	--workers 1 \
