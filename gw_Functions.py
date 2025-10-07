@@ -162,13 +162,14 @@ def rebootnow(logfile, gwColors):     # reboot system
             writelog(logfile,p)
 
     #   Reboot system
+        time.sleep(60)       # wait 60 seconds
         z = datetime.now()
         ts = fmtts(z)
 
         msg = curtime.strftime("\n\t    " + ts + "    -- Raspberry Pi Re-Booting... \n\n")
         writelog(logfile,msg, gwColors.byellow) # type: ignore
         print(msg)
-        time.sleep(60)       # wait 60 seconds
+
         os.system("sudo reboot now")
         return True
     except Exception as error:

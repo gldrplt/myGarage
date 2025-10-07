@@ -9,5 +9,5 @@
 *.stdout
 gw_door_state
 test*.py
-
+__pycache__/
 
