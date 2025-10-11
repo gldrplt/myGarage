@@ -1,6 +1,5 @@
 # gitignore patterns for myGarage
 
-*.ini
 *.txt
 *.log
 *.old*
