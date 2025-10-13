@@ -24,6 +24,7 @@ ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stdout \
 ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stderr \
 			  /home/pi/myprojects/myGarage/gw_web.stderr.old
 
+# Point to virtualenv packages
 WorkingDirectory=/home/paul/myprojects/myGarage
 Environment="PATH=/home/paul/.virtualenvs/myGarage/bin:/home/paul/bin"
 Environment="Running_Under_Systemd=true"
@@ -33,7 +34,7 @@ Environment="PYTHONUNBUFFERED=1"
 
 # ExecStart for virtual env AND uvicorn web server
 # NOTE: Environment=PATH directive doesn't work on pi-zero
-
+#ExecStart=uvicorn \
 ExecStart=/home/paul/.virtualenvs/myGarage/bin/uvicorn \
 	--host 0.0.0.0 \
 	--port 13233 \

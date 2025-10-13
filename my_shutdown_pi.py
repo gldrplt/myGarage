@@ -15,6 +15,8 @@ btn = Button(21)
 btn.wait_for_press()
 
 # shutdown pi
+print("Close Chromium browser...")
+os.system("pkill -5 chromium")
 print("shutting down...")
 os.system("sudo shutdown -h now")
 
