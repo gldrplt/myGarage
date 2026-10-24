@@ -1,6 +1,4 @@
-{"[python]": {
-    "editor.defaultFormatter": "eeyore.yapf"
-  },
-  "python-envs.defaultEnvManager": "ms-python.python:system",
-  "python-envs.pythonProjects": []
+{
+    "python.defaultInterpreterPath": "/home/paul/.virtualenvs/myGarage/bin/python",
+    "python.terminal.activateEnvironment": true
 }

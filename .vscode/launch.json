@@ -39,7 +39,7 @@
                 "--reload"
             ],
             "jinja": true
-        }
+        },
 {
             "name": "Bash Debugger",
             "type": "bashdb",
