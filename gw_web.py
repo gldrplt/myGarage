@@ -17,8 +17,10 @@
 #       Send SIGUSR2 signal to gw_web.py if Bad Pin
 #            
 ############################################################################
+import cmd
 import os
 import sys
+import subprocess
 from datetime import datetime
 import gw_Functions as gwf
 import psutil
@@ -348,12 +350,18 @@ async def homepage(request: Request):
 #       Get status of garage door and set status message
 #       if invalid PIN entered set garstatus
         if doorstate == "Open":
-            garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
+            try:
+                garstatus = "is Open since " + octime.strftime("%l:%M:%S %P")
+            except:
+                garstatus = "is Open since unknown time"
             if pinstatus == False:
                 garstatus = "Invalid PIN ..."
 
         elif doorstate == "Closed":
-            garstatus = "is Closed since " + octime.strftime("%l:%M:%S %P")
+            try:
+                garstatus = "is Closed since " + octime.strftime("%l:%M:%S %P")
+            except:
+                garstatus = "is Closed since unknown time"
             if pinstatus == False:
                 garstatus = "Invalid PIN ..."
 
@@ -383,12 +391,13 @@ async def MyClock(request: Request, option: str = "Admin"):
       print(f"at MyClock/{option} ...")
       global milflag
       global dateflag
+      cmd = []
       if option == 'Admin':
            pass
       elif option == 'Show':
-           os.system(homedir + "/bin/myclock +s")
+           cmd = ["myclock", "+s"]
       elif option == 'Blank':
-           os.system(homedir + "/bin/myclock -s")
+           cmd = ["myclock", "-s"]
       elif option == 'ToggleMil':
            if milflag:
                milflag = False
@@ -396,9 +405,7 @@ async def MyClock(request: Request, option: str = "Admin"):
            else:
                milflag = True
                p = "+m"
-           cmd = homedir + "/bin/myclock "+p
-           print(cmd)
-           os.system(cmd)
+           cmd = ["myclock", p]
       elif option == 'ToggleDate':
            if dateflag:
                dateflag = False
@@ -406,22 +413,23 @@ async def MyClock(request: Request, option: str = "Admin"):
            else:
                dateflag = True
                p = "+d"
-           cmd = homedir + "/bin/myclock "+p
-           print(cmd)
-           os.system(cmd)
+           cmd = ["myclock", p]
       elif option == 'Mil':
-           os.system(homedir + "/bin/myclock +m")
+           cmd = ["myclock", "+m"]
       elif option == 'notMil':
-           os.system(homedir + "/bin/myclock -m")
+           cmd = ["myclock", "-m"]
       elif option == 'Dim':
-           os.system(homedir + "/bin/myclock -b 0")
+           cmd = ["myclock", "-b", "0"]
       elif option == 'Bright':
-           os.system(homedir + "/bin/myclock -b 1")
+           cmd = ["myclock", "-b", "1"]
       elif option == 'Segments':
-           os.system(homedir + "/bin/myclock -f")
+           cmd = ["myclock", "-f"]
       elif option == 'RestartClock':
-           os.system(homedir + "/bin/restartclock")
-
+           cmd = ["myclock", "-r"]
+         
+      if cmd:
+        subprocess.run(cmd)
+      
 #      return RedirectResponse(url='/MyClock/Admin')
 
       return templates.TemplateResponse('mygarageclock.html', {"request": request})
