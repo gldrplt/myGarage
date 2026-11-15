@@ -6,6 +6,7 @@
 #
 ################################################################
 import os
+import subprocess
 import sys
 import time
 import pause
@@ -170,7 +171,7 @@ def rebootnow(logfile, gwColors):     # reboot system
         writelog(logfile,msg, gwColors.byellow) # type: ignore
         print(msg)
 
-        os.system("sudo reboot now")
+        subprocess.run("sudo reboot now", shell=True)
         return True
     except Exception as error:
         myerr = myError(error, 'waitforreboot')
@@ -258,7 +259,7 @@ def sendsignal(tgt, signal):    # send signal to tgt pids
         for x in tgt:           # loop through list of pids
             print("Sending signal "+signal+" to pid " + x)
             cmd = "kill -" + signal +" " + x
-            os.system(cmd)
+            subprocess.run(cmd, shell=True)
     except:
         pass
 

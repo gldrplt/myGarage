@@ -39,9 +39,13 @@ import asyncio
 import uvicorn
 import json
 
+def myprint(*args):
+     with open('gw_web.stdout', 'a') as f:
+          f.write(' '.join(str(arg) for arg in args) + '\n')
+
 def Set_Door_State(state, loop):
     global color, doorstate
-    print(f"at Set_Door_State - {state}")
+    myprint(f"at Set_Door_State - {state}")
     doorstate = state
     color = {'Closed': 'green', 'Closing': 'orange', 'Open': 'red', 'Opening': 'orange'}.get(state, 'orange')
     loop.call_soon_threadsafe(asyncio.create_task, Send_Door_Change())
@@ -50,13 +54,13 @@ async def Send_Door_Change():
     global octime
     global pinstatus
     global garstatus, garimg, garcolor
-    print()
-    print(datetime.now())
-    print("at Send_Door_Changed ...")
-    print("Clients = ",len(manager.active_connections))
+    myprint()
+    myprint(datetime.now())
+    myprint("at Send_Door_Changed ...")
+    myprint("Clients = ",len(manager.active_connections))
     for c in manager.active_connections:
-         print(c)
-    print()
+         myprint(c)
+    myprint()
     
     # reset octime
     octime = datetime.now()
@@ -78,19 +82,23 @@ async def Send_Door_Change():
     await manager.broadcast(data)
 
 def shutdown():                 # shutdown raspberry pi
-    print("at shutdown")
-    os.system(homedir + "/bin/myclock -k")
-    os.system("sudo shutdown now")
+    myprint("at shutdown")
+    cmd = homedir + "/bin/myclock -k"
+    subprocess.run(cmd, shell=True)
+    subprocess.run("sudo shutdown now", shell=True)
 
 def reboot():                   # reboot raspberry pi
-    print("at reboot")
-    os.system(homedir + "/bin/myclock -k")
-    os.system("sudo shutdown -r now")
+    myprint("at reboot")
+    cmd = homedir + "/bin/myclock -k"
+    subprocess.run(cmd, shell=True)
+    subprocess.run("sudo shutdown -r now", shell=True)
 
 def close():                    # shutdown gw_web.py program
-    print("\n... Closing webserver ...\n") 
-    os.system(homedir + "/bin/myclock -k")
-    os.system(homedir + "/bin/killpids gw_web.py")
+    myprint("\n... Closing webserver ...\n") 
+    cmd = homedir + "/bin/myclock -k"
+    subprocess.run(cmd, shell=True)
+    cmd = homedir + "/bin/killpids gw_web.py"
+    subprocess.run(cmd, shell=True)
 
 def chkprog(pname):
      for proc in psutil.process_iter( [ 'cmdline' ]):
@@ -102,7 +110,7 @@ def chkprog(pname):
 def listen_to_gw_log(loop):
     global doorstate
     global octime
-    print("listen_to_gw_log starting ...")
+    myprint("listen_to_gw_log starting ...")
 
     # use UNIX Sockets to be notified of change in door status
     socket_path = "/tmp/gw_socket"
@@ -115,7 +123,7 @@ def listen_to_gw_log(loop):
         while True:
             conn, addr = s.accept()
             with conn:
-                print('Socket created at ' + socket_path + '\n' )
+                myprint('Socket created at ' + socket_path + '\n' )
                 while True:
                     x = conn.recv(1024)
                     if not x:
@@ -124,13 +132,13 @@ def listen_to_gw_log(loop):
                     data = json.loads(x.decode())
                     doorstate = data.get("doorstate")
                     octime = data.get("octime")
-                    print('Door State Changed to: ' + doorstate)
+                    myprint('Door State Changed to: ' + doorstate)
                     if doorstate in ["Closed", "Closing", "Open", "Opening"]:
                         Set_Door_State(doorstate, loop)
                     else:
-                        print('Door state unknown')
+                        myprint('Door state unknown')
 
-    print('gw_web ending ...\n')
+    myprint('gw_web ending ...\n')
 
 async def process_web_page_cmd(data):
         global pinstatus
@@ -140,15 +148,15 @@ async def process_web_page_cmd(data):
             cmdType = cmdArray[0]
             cmd = cmdArray[1]
         except:
-            print("Illegal cmd sent...")
+            myprint("Illegal cmd sent...")
             return
 
         if cmdType == "GarageStatus":
-             print(manager.active_connections)
+             myprint(manager.active_connections)
 
         if cmdType == "Admin":
-            print("... received data from webadmin page ...")
-            print(cmd,'\n')
+            myprint("... received data from webadmin page ...")
+            myprint(cmd,'\n')
             if cmd == 'reboot':
                 reboot()
             if cmd == 'shutdown':
@@ -158,17 +166,17 @@ async def process_web_page_cmd(data):
 
         if cmdType == 'GarCode':
             pin = cmd
-            print("PIN = " + pin)
+            myprint("PIN = " + pin)
             if pin == gwdict['gwCode']:  # Code if Password is correct
                 garstatus = ''
                 pinstatus = True
-                print("Sending SIGUSR1 (10) to gw_log.py "+gw_log_pid)
+                myprint("Sending SIGUSR1 (10) to gw_log.py "+gw_log_pid)
                 gwf.sendsignal(gw_log_pid, "10") 
             elif pin != "":          # Code if Password is incorrect
                 pinstatus = False         # invalid PIN   
-                print("Sending SIGUSR1 (12) to gw_log.py "+gw_log_pid)           
+                myprint("Sending SIGUSR1 (12) to gw_log.py "+gw_log_pid)           
                 gwf.sendsignal(gw_log_pid, "12")
-                print("Invalid PIN ...",pin)
+                myprint("Invalid PIN ...",pin)
 
                 mydict = dict(type = 'badpin')
                 data = json.dumps(mydict)
@@ -176,7 +184,7 @@ async def process_web_page_cmd(data):
                 pinstatus = True    # reset pinstatus
         
         if cmdType == 'Log':
-            print('at get log data for: ',data)
+            myprint('at get log data for: ',data)
 
             logfname = gwdict['gwLogFile']
             ans = gwf.getlogdays(logfname)
@@ -197,7 +205,7 @@ async def process_web_page_cmd(data):
                           logdaycnt = logdaycnt, \
                           loghdr = loghdr, logdata = logdata)
             data = json.dumps(mydict)
-            print(data)
+            myprint(data)
             await manager.broadcast(data)
 
 ######################################################
@@ -211,12 +219,16 @@ if os.getenv('Running_Under_Systemd') == 'true':
     sys.stdout = open('gw_web.stdout', 'a')
     sys.stderr = open('gw_web.stderr', 'a')
 
-print('Parmstring = ',sys.argv)
-print()
-print('PYTHONUNBUFFERED = ',os.getenv('PYTHONUNBUFFERED'))
+with open('gw_web.stdout', 'w') as f:   #initialize stdout file
+     pass
+
+myprint('Parmstring = ',sys.argv)
+myprint()
+myprint('PYTHONUNBUFFERED = ',os.getenv('PYTHONUNBUFFERED'))
 
 originalstdout = sys.stdout 
 originalstderr = sys.stderr
+
 
 #   if running in test mode
 t_flag = False              # test flag
@@ -229,42 +241,43 @@ if t_flag == False:     # if running in test mode don't check for gw_log.py
     #   Get PID of gw_log.py
     gw_log_pids, vscode = gwf.get_tgt_pids("gw_log.py")
     if len(gw_log_pids) == 0:
-        print('Error - gw_log.py is not running...')
-        print('gw_web exiting ...')
-        os.kill(os.getppid(), 15)   # send SIGTERM to gunicorn master process
+        myprint('Error - gw_log.py is not running...')
+        myprint('gw_web exiting ...')
+        cmd = "sudo kill " + str(os.getppid())
+        subprocess.run(cmd, shell=True)   # send SIGTERM to gunicorn master process
         exit()
     else:
         if vscode:
              gw_log_pid = gw_log_pids[1]
         else:
              gw_log_pid = gw_log_pids[0] 
-    print("gw_log pid = "+gw_log_pid)
+    myprint("gw_log pid = "+gw_log_pid)
 
 #   get signals constants
 mysignal = mySignals()
 
 now = datetime.now()
 msg = now.strftime("\n%H:%M:%S gw_web.py starting ...\n")
-print(msg)
+myprint(msg)
 
 mypath = os.getcwd()
 parmfile = mypath + '/' + 'gw_parms.ini'
 
-print ('Working Directory = '+os.getcwd())
+myprint ('Working Directory = '+os.getcwd())
 os.chdir(mypath)
-print ('Changed to ..')
-print ('Working Directory = '+os.getcwd())
+myprint ('Changed to ..')
+myprint ('Working Directory = '+os.getcwd())
 
 pid = os.getpid()
-print('\ngw_web.py PID = ',pid,'\n')
+myprint('\ngw_web.py PID = ',pid,'\n')
 
 #   get hostname
 hostname = os.uname().nodename
-print('Hostname = ',hostname, '\n')
+myprint('Hostname = ',hostname, '\n')
 
 #   get home directory
 homedir = os.getenv("HOME")
-print('Home Directory = ',homedir,'\n')
+myprint('Home Directory = ',homedir,'\n')
       
 #   Create FastAPI and WebSocket instances
 app = FastAPI()                 
@@ -333,7 +346,7 @@ async def homepage(request: Request):
 #        return templates.TemplateResponse("GarageStatus.html",{"request": request})
 
 #       render Garage Status Form based on garage door position        
-        print("at Route / ")
+        myprint("at Route / ")
         global invertlog
 
 #       flush stdout, stderr buffers
@@ -391,7 +404,7 @@ async def MyClock(request: Request, option: str = "Admin"):
       global milflag
       global dateflag
 
-      print(f"at MyClock/{option} ...")
+      myprint(f"at MyClock/{option} ...")
       cmd = []
       if option == 'Admin':
            pass
@@ -429,15 +442,15 @@ async def MyClock(request: Request, option: str = "Admin"):
            cmd = "myclock -r"
          
       if cmd:
-        print("cmd = ",cmd)
+        myprint("cmd = ",cmd)
         result = subprocess.run(cmd,
                                  shell=True,
                                  capture_output=True,
                                  text=True
                                     )
-        print("result = ",result)
-        print("returncode = ",result.returncode)
-        print("stderr = ",result.stderr)
+        myprint("result = ",result)
+        myprint("returncode = ",result.returncode)
+        myprint("stderr = ",result.stderr)
       
 #      return RedirectResponse(url='/MyClock/Admin')
 
@@ -446,7 +459,7 @@ async def MyClock(request: Request, option: str = "Admin"):
         
 @app.get('/Admin', response_class=HTMLResponse)
 def Admin(request: Request):
-    print("at Admin")
+    myprint("at Admin")
     return templates.TemplateResponse('webadmin.html', {'request': request})
 
 #       end of MyClock routes
@@ -456,7 +469,7 @@ def logfile(request: Request):
         global invertlog
         global logday
 
-        print('at Route /Log')
+        myprint('at Route /Log')
         logfname = gwdict['gwLogFile']
         ans = gwf.getlogdays(logfname)
         cnt = len(ans)
@@ -483,7 +496,7 @@ def logfile(request: Request):
 
 @app.get('/ShowParmForm', response_class=HTMLResponse)
 async def ShowParmForm(request: Request):
-        print("at /ShowParmForm")    
+        myprint("at /ShowParmForm")    
         a = gwdict['gwGarageName']
         b = gwdict['gwCode']
         c = gwdict['gwOpenWarning']
@@ -565,7 +578,7 @@ sys.stdout.flush()
 sys.stderr.flush()
 now = datetime.now()
 msg = now.strftime("\n%H:%M:%S gw_web.py at Launch FastAPI ASGI server ...\n")
-print(msg)
+myprint(msg)
 
 if __name__ == '__main__':
         uvicorn.run(app, host='0.0.0.0', port=int(gwdict['gwPort']))

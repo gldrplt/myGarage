@@ -49,6 +49,27 @@ from gw_Classes import myError, mySignals, gwColors
 import socket
 import json
 
+def GetDoorState():
+    global doorstate
+    global laststate
+
+    doorstate = 'Unknown'
+    laststate = ''
+    if closedsw.is_pressed:
+        doorstate = 'Closed'
+        laststate = 'Door is Closed'
+        closedled.on()
+
+    if opensw.is_pressed:
+        doorstate = 'Open'
+        laststate = 'Door is Open'
+        openled.on()
+
+    if laststate == '':
+        laststate = 'Door State is Unknown'
+        closedled.blink(.1,.1)
+        openled.blink(.1,.1)
+
 #   context manager to perform gpio cleanup
 @contextmanager
 def gpio_devices():
@@ -177,6 +198,8 @@ def waitforgw_web():
     while True:
         gw_web_event.wait()
         print("\nat gw_web started")
+        GetDoorState()
+        octime_dto = datetime.now()
         SendDoorState(doorstate, octime_dto)
         gw_web_event.clear()
 
@@ -497,22 +520,7 @@ with gpio_devices():
         timer = Timer(gwOpenTime, OpenWarning)
 
     #        Determine initial status of door
-    doorstate = 'Unknown'
-    laststate = ''
-    if closedsw.is_pressed:
-        doorstate = 'Closed'
-        laststate = 'Door is Closed'
-        closedled.on()
-
-    if opensw.is_pressed:
-        doorstate = 'Open'
-        laststate = 'Door is Open'
-        openled.on()
-
-    if laststate == '':
-        laststate = 'Door State is Unknown'
-        closedled.blink(.1,.1)
-        openled.blink(.1,.1)
+    GetDoorState()
 
     octime_dto = datetime.now()
     ts = gwf.fmtts(octime_dto)                 # format time stamp 24hr
