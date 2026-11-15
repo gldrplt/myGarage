@@ -115,7 +115,7 @@ def listen_to_gw_log(loop):
         while True:
             conn, addr = s.accept()
             with conn:
-                print('Socket created at' + socket_path + '\n' )
+                print('Socket created at ' + socket_path + '\n' )
                 while True:
                     x = conn.recv(1024)
                     if not x:
@@ -208,8 +208,8 @@ async def process_web_page_cmd(data):
 
 #   if running under systemd, redirect stdout, stderr to file
 if os.getenv('Running_Under_Systemd') == 'true':
-    sys.stdout = open('gw_web.stdout', 'w')
-    sys.stderr = open('gw_web.stderr', 'w')
+    sys.stdout = open('gw_web.stdout', 'a')
+    sys.stderr = open('gw_web.stderr', 'a')
 
 print('Parmstring = ',sys.argv)
 print()
@@ -388,16 +388,17 @@ async def get_web_cmd(websocket: WebSocket):
 #       MyClock routes
 @app.get("/MyClock/{option}", response_class=HTMLResponse)
 async def MyClock(request: Request, option: str = "Admin"):
-      print(f"at MyClock/{option} ...")
       global milflag
       global dateflag
+
+      print(f"at MyClock/{option} ...")
       cmd = []
       if option == 'Admin':
            pass
       elif option == 'Show':
-           cmd = ["myclock", "+s"]
+           cmd = "myclock +s"
       elif option == 'Blank':
-           cmd = ["myclock", "-s"]
+           cmd = "myclock -s"
       elif option == 'ToggleMil':
            if milflag:
                milflag = False
@@ -405,7 +406,7 @@ async def MyClock(request: Request, option: str = "Admin"):
            else:
                milflag = True
                p = "+m"
-           cmd = ["myclock", p]
+           cmd = "myclock " + p
       elif option == 'ToggleDate':
            if dateflag:
                dateflag = False
@@ -413,22 +414,30 @@ async def MyClock(request: Request, option: str = "Admin"):
            else:
                dateflag = True
                p = "+d"
-           cmd = ["myclock", p]
+           cmd = "myclock" + p
       elif option == 'Mil':
-           cmd = ["myclock", "+m"]
+           cmd = "myclock +m"
       elif option == 'notMil':
-           cmd = ["myclock", "-m"]
+           cmd = "myclock -m"
       elif option == 'Dim':
-           cmd = ["myclock", "-b", "0"]
+           cmd = "myclock -b 0"
       elif option == 'Bright':
-           cmd = ["myclock", "-b", "1"]
+           cmd = "myclock -b 1"
       elif option == 'Segments':
-           cmd = ["myclock", "-f"]
+           cmd = "myclock -f"
       elif option == 'RestartClock':
-           cmd = ["myclock", "-r"]
+           cmd = "myclock -r"
          
       if cmd:
-        subprocess.run(cmd)
+        print("cmd = ",cmd)
+        result = subprocess.run(cmd,
+                                 shell=True,
+                                 capture_output=True,
+                                 text=True
+                                    )
+        print("result = ",result)
+        print("returncode = ",result.returncode)
+        print("stderr = ",result.stderr)
       
 #      return RedirectResponse(url='/MyClock/Admin')
 

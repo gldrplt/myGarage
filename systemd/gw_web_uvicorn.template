@@ -26,7 +26,10 @@ ExecStartPre=-/usr/bin/mv -f /home/paul/myprojects/myGarage/gw_web.stderr \
 
 # Point to virtualenv packages
 WorkingDirectory=/home/paul/myprojects/myGarage
-Environment="PATH=/home/paul/.virtualenvs/myGarage/bin:/home/paul/bin"
+
+Environment="PATH=/home/paul/.virtualenvs/myGarage/bin:/home/paul/bin:\
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 Environment="Running_Under_Systemd=true"
 Environment="PYTHONUNBUFFERED=1"
 
