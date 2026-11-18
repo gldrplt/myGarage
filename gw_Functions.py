@@ -9,7 +9,6 @@ import os
 import subprocess
 import sys
 import time
-import pause
 from datetime import datetime, timedelta
 from subprocess import run
 import shutil
@@ -70,41 +69,37 @@ def build_gwdict(fname, gwdict, gwdictcomment):
             gwdictcomment[key] = c  #save comment for key
 
 def update_ini(fname, gwdict, gwdictcomment):
-    f = open(fname,"w")
-    a = '#\n'
-    f.write(a)
-    a = '# parameters used by GarageWeb App' + '\n'
-    f.write(a)
-    a = '#\n'
-    f.write(a)
-
-    mylist = []
-
-    for x in gwdict.items():
-        mylist.append(x)
-    mylist.sort()
-
-    for x in mylist:
-        p1 = x[0]   # parm name
-        v1 = x[1]   # parm value
-        c1 = gwdictcomment[p1]  # parm comment
-        a = p1 +'=' + v1 + c1 + '\n'
+    with open(fname, "r") as f:
+        a = '#\n'
         f.write(a)
-    f.close
+        a = '# parameters used by GarageWeb App' + '\n'
+        f.write(a)
+        a = '#\n'
+        f.write(a)
+
+        mylist = []
+
+        for x in gwdict.items():
+            mylist.append(x)
+        mylist.sort()
+
+        for x in mylist:
+            p1 = x[0]   # parm name
+            v1 = x[1]   # parm value
+            c1 = gwdictcomment[p1]  # parm comment
+            a = p1 +'=' + v1 + c1 + '\n'
+            f.write(a)
 
 def writelog(fname,msg, color=None):
-    if color is not None:
-        msg = colorstring(msg, color)    # set text color
-    f = open(fname,"a")
-    f.write(msg)
-    f.close()
+    with open(fname,"a") as f:
+        if color is not None:
+            msg = colorstring(msg, color)    # set text color
+        f.write(msg)
 
 def writeoctime(dto):
     msg = dto.strftime("%Y-%m-%d %l:%M:%S %p")
-    f = open('gw_octime.txt','w')
-    f.write(msg)
-    f.close()
-
+    with open('gw_octime.txt','w') as f:
+        f.write(msg)
 
 def calc_reboot_dto(hhmm: str) -> datetime:
     """Return a datetime for today at hhmm.
@@ -187,8 +182,6 @@ def trimlog(logdays,logfile):
         if i <= logdays:     # check if log file exceeds gwLogDays
             return
     except:
-        f = open(logfile,'w')
-        f.close()
         return
 
     newlogname = logfile + '.old'
@@ -209,10 +202,8 @@ def trimlog(logdays,logfile):
         outlog = outlog + logday  #   add log day to trimlog
 
     #   write trimmed logfile
-    f = open(logfile,'w')
-    f.write(outlog)
-    f.close()
-
+    with open(logfile,'w') as f:
+        f.write(outlog)
 
 def get_tgt_pids(tgt):   # return array of pids for tgt
     tgt_pid = ""

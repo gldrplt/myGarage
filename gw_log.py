@@ -270,7 +270,6 @@ def DoorClosed():
     msg = "\t    " + ts + " -- Door is Closed \n\n"
     gwf.writelog(gwLogFile,msg)
     print(msg)
-    gwf.writeoctime(z)   # write open/close time for gw_web
     doorstate = "Closed"
 
     SendDoorState(doorstate, octime_dto)
